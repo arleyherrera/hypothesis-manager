@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_CONFIG = {
   //BASE_URL: 'http://localhost:5000/api',
-  BASE_URL: 'https://hypothesis-backend-production.up.railway.app',
+  BASE_URL: 'https://hypothesis-backend-production.up.railway.app/api',
   HEADERS: { 'Content-Type': 'application/json' },
   STORAGE_KEY: 'user',
   TOKEN_PREFIX: 'Bearer'
