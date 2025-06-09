@@ -3,7 +3,7 @@ import { Card, Button, Modal, Spinner, Alert, Row, Col, Badge, Form, Table, Butt
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateArtifacts } from '../services/artifactService';
-import { generateArtifactWithAI, improveArtifactWithAI } from '../services/aiService';
+import { generateArtifactWithAI, improveAllArtifactsWithAI } from '../services/aiService';
 import { fetchHypothesisById } from '../services/hypothesisService';
 import { 
   FileEarmarkText, 
@@ -21,7 +21,9 @@ import {
   Robot,
   Magic,
   CodeSlash,
-  FileRichtext
+  FileRichtext,
+  CheckCircle,
+  InfoCircleFill
 } from 'react-bootstrap-icons';
 
 const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
@@ -31,11 +33,10 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
   const [selectedArtifact, setSelectedArtifact] = useState(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [hypothesis, setHypothesis] = useState(null);
-  const [showImproveModal, setShowImproveModal] = useState(false);
-  const [improvePrompt, setImprovePrompt] = useState('');
-  const [isImproving, setIsImproving] = useState(false);
   const [aiStatus, setAiStatus] = useState('');
   const [viewMode, setViewMode] = useState('formatted');
+  const [isImprovingAll, setIsImprovingAll] = useState(false);
+  const [allImproved, setAllImproved] = useState(false);
 
   const PHASE_CONFIG = {
     'construir': { name: 'Construir', description: 'Construye un producto mínimo viable para probar tu hipótesis de manera rápida y económica.', color: 'primary', icon: <BoxSeam size={20} /> },
@@ -116,6 +117,11 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
     loadHypothesis();
   }, [hypothesisId]);
 
+  useEffect(() => {
+    const improved = artifacts.length > 0 && artifacts.every(a => a.name.includes('(Mejorado)'));
+    setAllImproved(improved);
+  }, [artifacts]);
+
   const resetError = () => setError(null);
   const showError = (message) => setError(message);
   const refreshPage = () => window.location.reload();
@@ -168,6 +174,24 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
     }
   };
 
+  const handleImproveAllArtifacts = async () => {
+    setIsImprovingAll(true);
+    setError(null);
+    
+    try {
+      await improveAllArtifactsWithAI(hypothesisId, phase);
+      // Recargar para mostrar los cambios
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (err) {
+      console.error('Error al mejorar artefactos:', err);
+      setError('Error al mejorar los artefactos. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsImprovingAll(false);
+    }
+  };
+
   const handleShowArtifact = (artifact) => {
     setSelectedArtifact(artifact);
     setViewMode('formatted');
@@ -175,37 +199,6 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
   };
 
   const handleCloseModal = () => setShowModal(false);
-
-  const createImprovePrompt = (artifact) => {
-    return `Por favor, mejora este artefacto de la fase de ${currentPhaseConfig.name.toLowerCase()} haciéndolo más detallado y específico para mi caso particular.`;
-  };
-
-  const handleShowImproveModal = (artifact) => {
-    setSelectedArtifact(artifact);
-    setImprovePrompt(createImprovePrompt(artifact));
-    setShowImproveModal(true);
-  };
-
-  const handleCloseImproveModal = () => {
-    setShowImproveModal(false);
-    setImprovePrompt('');
-    resetError();
-  };
-
-  const handleImproveArtifact = async () => {
-    setIsImproving(true);
-    resetError();
-    try {
-      await improveArtifactWithAI(selectedArtifact.id, improvePrompt);
-      setShowImproveModal(false);
-      refreshPage();
-    } catch (err) {
-      console.error('Error al mejorar el artefacto con IA:', err);
-      showError('Error al mejorar el artefacto con IA. Por favor, inténtelo de nuevo.');
-    } finally {
-      setIsImproving(false);
-    }
-  };
 
   const createArtifactContent = () => {
     if (!selectedArtifact) return '';
@@ -245,13 +238,46 @@ ${selectedArtifact.content}
   const isImproved = (artifact) => artifact.name.includes('Mejorado');
 
   const renderPhaseHeader = () => (
-    <div className="d-flex align-items-center mb-2">
-      <div className={`rounded-circle p-2 me-3 text-white bg-${currentPhaseConfig.color}`}>
-        {currentPhaseConfig.icon}
-      </div>
-      <div>
-        <h4 className="mb-1">{currentPhaseConfig.name}</h4>
-        <p className="text-muted mb-0">{currentPhaseConfig.description}</p>
+    <div className="mb-4">
+      <div className="d-flex align-items-center justify-content-between mb-2">
+        <div className="d-flex align-items-center">
+          <div className={`rounded-circle p-2 me-3 text-white bg-${currentPhaseConfig.color}`}>
+            {currentPhaseConfig.icon}
+          </div>
+          <div>
+            <h4 className="mb-1">{currentPhaseConfig.name}</h4>
+            <p className="text-muted mb-0">{currentPhaseConfig.description}</p>
+          </div>
+        </div>
+        
+        {/* Botón para mejorar todos */}
+        {artifacts.length > 0 && !allImproved && (
+          <Button 
+            variant="success" 
+            onClick={handleImproveAllArtifacts}
+            disabled={isImprovingAll}
+            className="d-flex align-items-center"
+          >
+            {isImprovingAll ? (
+              <>
+                <Spinner size="sm" animation="border" className="me-2" />
+                Mejorando todos...
+              </>
+            ) : (
+              <>
+                <Magic className="me-2" size={18} />
+                Mejorar Todos con IA
+              </>
+            )}
+          </Button>
+        )}
+        
+        {allImproved && (
+          <Badge bg="success" className="px-3 py-2 d-flex align-items-center">
+            <CheckCircle className="me-1" size={16} />
+            Todos mejorados
+          </Badge>
+        )}
       </div>
     </div>
   );
@@ -347,14 +373,10 @@ ${selectedArtifact.content}
           <Card.Text className="artifact-description">{artifact.description}</Card.Text>
         </Card.Body>
         <Card.Footer className="bg-white border-top-0 pt-0">
-          <div className="d-grid gap-2">
+          <div className="d-grid">
             <Button variant="outline-primary" className="d-flex justify-content-center align-items-center" onClick={() => handleShowArtifact(artifact)}>
               <Eye className="me-2" size={16} />
               Ver Detalles
-            </Button>
-            <Button variant="outline-success" className="d-flex justify-content-center align-items-center" onClick={() => handleShowImproveModal(artifact)}>
-              <Magic className="me-2" size={16} />
-              Mejorar con IA
             </Button>
           </div>
         </Card.Footer>
@@ -559,13 +581,7 @@ ${selectedArtifact.content}
             Compartir
           </Button>
         </div>
-        <div>
-          <Button variant="success" className="me-2 d-flex align-items-center" onClick={() => { handleCloseModal(); handleShowImproveModal(selectedArtifact); }}>
-            <Magic className="me-2" size={16} />
-            Mejorar con IA
-          </Button>
-          <Button variant="secondary" onClick={handleCloseModal}>Cerrar</Button>
-        </div>
+        <Button variant="secondary" onClick={handleCloseModal}>Cerrar</Button>
       </div>
     </Modal.Footer>
   );
@@ -582,79 +598,12 @@ ${selectedArtifact.content}
     </Modal>
   );
 
-  const renderImproveModalHeader = () => (
-    <Modal.Header closeButton>
-      <Modal.Title className="d-flex align-items-center">
-        <Magic className="me-2 text-success" size={24} />
-        Mejorar Artefacto con IA
-      </Modal.Title>
-    </Modal.Header>
-  );
-
-  const renderImproveInstructions = () => (
-    <>
-      <div className="mb-4">
-        <h5>Artefacto a mejorar: {selectedArtifact.name}</h5>
-        <Badge bg={currentPhaseConfig.color} className="mb-3">
-          Fase: {currentPhaseConfig.name}
-        </Badge>
-      </div>
-      <Form.Group className="mb-4">
-        <Form.Label className="fw-bold">Instrucciones para la IA</Form.Label>
-        <Form.Text className="text-muted d-block mb-2">
-          Modifique este prompt para personalizar cómo la IA mejorará su artefacto.
-        </Form.Text>
-        <Form.Control
-          as="textarea"
-          rows={5}
-          value={improvePrompt}
-          onChange={(e) => setImprovePrompt(e.target.value)}
-          placeholder="Indique aquí sus instrucciones específicas para mejorar el artefacto..."
-        />
-      </Form.Group>
-      <div className="bg-light p-3 rounded mb-3">
-        <h6 className="fw-bold mb-2">Sugerencias de mejora:</h6>
-        <ul className="small">
-          <li>Solicite ejemplos más concretos para su industria o modelo de negocio</li>
-          <li>Pida que se incluyan herramientas o metodologías específicas</li>
-          <li>Solicite más detalles sobre métricas o KPIs relevantes</li>
-          <li>Pida instrucciones paso a paso más detalladas</li>
-        </ul>
-      </div>
-    </>
-  );
-
-  const renderImproveModalFooter = () => (
-    <Modal.Footer>
-      <Button variant="secondary" onClick={handleCloseImproveModal}>Cancelar</Button>
-      <Button variant="success" onClick={handleImproveArtifact} disabled={isImproving} className="d-flex align-items-center">
-        {isImproving ? renderLoadingButton('Procesando...') : renderIconButton(<Magic className="me-2" size={18} />, 'Mejorar con IA')}
-      </Button>
-    </Modal.Footer>
-  );
-
-  const renderImproveModal = () => (
-    <Modal show={showImproveModal} onHide={handleCloseImproveModal} size="lg" centered>
-      {selectedArtifact && (
-        <>
-          {renderImproveModalHeader()}
-          <Modal.Body>
-            {renderError()}
-            {renderImproveInstructions()}
-          </Modal.Body>
-          {renderImproveModalFooter()}
-        </>
-      )}
-    </Modal>
-  );
-
   return (
     <div className="fade-in">
       {renderPhaseHeader()}
       {renderError()}
       {artifacts.length === 0 ? renderEmptyState() : renderArtifactsGrid()}
       {renderDetailsModal()}
-      {renderImproveModal()}
     </div>
   );
 };

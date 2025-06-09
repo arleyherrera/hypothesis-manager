@@ -21,3 +21,14 @@ export const improveArtifactWithAI = async (artifactId, prompt = null) => {
     throw error;
   }
 };
+
+// NUEVA FUNCIÓN: Mejorar todos los artefactos de una fase
+export const improveAllArtifactsWithAI = async (hypothesisId, phase) => {
+  try {
+    const response = await api.post(`/artifacts/${hypothesisId}/improve-all/${phase}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error improving all artifacts with AI:', error);
+    throw error;
+  }
+};
