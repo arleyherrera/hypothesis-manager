@@ -8,7 +8,9 @@ import {
   LockFill, 
   EyeFill, 
   EyeSlashFill,
-  Lightbulb
+  Lightbulb,
+  CheckCircleFill,
+  XCircleFill
 } from 'react-bootstrap-icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,6 +19,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
   const { login, error: authError, clearError } = useAuth();
 
@@ -35,14 +39,97 @@ const Login = () => {
     return () => clearError && clearError();
   }, [clearError]);
 
+  // Validar email
+  const validateEmail = (email) => {
+    if (!email) {
+      return 'El correo electrónico es requerido';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Por favor ingrese un correo electrónico válido';
+    }
+    return null;
+  };
+
+  // Validar contraseña
+  const validatePassword = (password) => {
+    if (!password) {
+      return 'La contraseña es requerida';
+    }
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    return null;
+  };
+
+  // Validar todo el formulario
+  const validateForm = () => {
+    const errors = {};
+    const emailError = validateEmail(formData.email);
+    const passwordError = validatePassword(formData.password);
+    
+    if (emailError) errors.email = emailError;
+    if (passwordError) errors.password = passwordError;
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validar campo individual cuando pierde el foco
+  const handleBlur = (fieldName) => {
+    setTouched({ ...touched, [fieldName]: true });
+    
+    let error = null;
+    if (fieldName === 'email') {
+      error = validateEmail(formData.email);
+    } else if (fieldName === 'password') {
+      error = validatePassword(formData.password);
+    }
+    
+    setValidationErrors({
+      ...validationErrors,
+      [fieldName]: error
+    });
+  };
+
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Limpiar error del campo si ya fue tocado
+    if (touched[name]) {
+      let error = null;
+      if (name === 'email') {
+        error = validateEmail(value);
+      } else if (name === 'password') {
+        error = validatePassword(value);
+      }
+      
+      setValidationErrors({
+        ...validationErrors,
+        [name]: error
+      });
+    }
+    
+    // Limpiar error general al escribir
+    if (localError) {
+      setLocalError(null);
+    }
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    
+    // Marcar todos los campos como tocados
+    setTouched({ email: true, password: true });
+    
+    // Validar formulario
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
     setLocalError(null);
     
@@ -54,7 +141,16 @@ const Login = () => {
         setLocalError(AUTH_MESSAGES.LOGIN_ERROR_NO_FUNCTION);
       }
     } catch (err) {
-      setLocalError(err.response?.data?.message || AUTH_MESSAGES.LOGIN_ERROR_DEFAULT);
+      // Manejar diferentes tipos de errores
+      if (err.response?.status === 401) {
+        setLocalError('Correo electrónico o contraseña incorrectos');
+      } else if (err.response?.status === 404) {
+        setLocalError('No existe una cuenta con este correo electrónico');
+      } else if (err.response?.data?.message) {
+        setLocalError(err.response.data.message);
+      } else {
+        setLocalError(AUTH_MESSAGES.LOGIN_ERROR_DEFAULT);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,17 +175,52 @@ const Login = () => {
     </Alert>
   );
 
+  const renderFieldError = (fieldName) => {
+    if (touched[fieldName] && validationErrors[fieldName]) {
+      return (
+        <Form.Text className="text-danger d-flex align-items-center mt-1">
+          <XCircleFill className="me-1" size={12} />
+          {validationErrors[fieldName]}
+        </Form.Text>
+      );
+    }
+    return null;
+  };
+
+  const renderFieldSuccess = (fieldName) => {
+    if (touched[fieldName] && !validationErrors[fieldName] && formData[fieldName]) {
+      return (
+        <Form.Text className="text-success d-flex align-items-center mt-1">
+          <CheckCircleFill className="me-1" size={12} />
+          Válido
+        </Form.Text>
+      );
+    }
+    return null;
+  };
+
+  const getInputClassName = (fieldName) => {
+    const baseClass = "bg-light border-start-0";
+    if (!touched[fieldName]) return baseClass;
+    if (validationErrors[fieldName]) return `${baseClass} is-invalid`;
+    if (formData[fieldName]) return `${baseClass} is-valid`;
+    return baseClass;
+  };
+
   const renderInputField = (field, showToggle = false) => (
-    <InputGroup>
+    <InputGroup className={touched[field.name] && validationErrors[field.name] ? 'has-validation' : ''}>
       <InputGroup.Text className="bg-light border-end-0">{field.icon}</InputGroup.Text>
       <Form.Control
         type={field.name === 'password' && showPassword ? 'text' : field.type}
         name={field.name}
         value={formData[field.name]}
         onChange={handleChange}
+        onBlur={() => handleBlur(field.name)}
         placeholder={field.placeholder}
-        className={`bg-light border-start-0 ${showToggle ? 'border-end-0' : ''}`}
+        className={getInputClassName(field.name) + (showToggle ? ' border-end-0' : '')}
         required
+        isInvalid={touched[field.name] && !!validationErrors[field.name]}
+        isValid={touched[field.name] && !validationErrors[field.name] && !!formData[field.name]}
       />
       {showToggle && (
         <InputGroup.Text 
@@ -107,6 +238,8 @@ const Login = () => {
     <Form.Group className="mb-4">
       <Form.Label>Correo Electrónico</Form.Label>
       {renderInputField(FORM_FIELDS.email)}
+      {renderFieldError('email')}
+      {renderFieldSuccess('email')}
     </Form.Group>
   );
 
@@ -114,9 +247,11 @@ const Login = () => {
     <Form.Group className="mb-4">
       <div className="d-flex justify-content-between">
         <Form.Label>Contraseña</Form.Label>
-        <Link to="/forgot-password" className="text-decoration-none small">¿Olvidaste tu contraseña?</Link>
+        <Link to="/forgot-password" className="text-decoration-none small"></Link>
       </div>
       {renderInputField(FORM_FIELDS.password, true)}
+      {renderFieldError('password')}
+      {renderFieldSuccess('password')}
     </Form.Group>
   );
 
@@ -128,7 +263,13 @@ const Login = () => {
 
   const renderSubmitButton = () => (
     <div className="d-grid gap-2 mb-4">
-      <Button variant="primary" type="submit" size="lg" className="py-2" disabled={loading}>
+      <Button 
+        variant="primary" 
+        type="submit" 
+        size="lg" 
+        className="py-2" 
+        disabled={loading}
+      >
         {loading ? (
           <>
             <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -154,7 +295,7 @@ const Login = () => {
   );
 
   const renderForm = () => (
-    <Form onSubmit={handleLoginSubmit}>
+    <Form onSubmit={handleLoginSubmit} noValidate>
       {renderEmailField()}
       {renderPasswordField()}
       {renderRememberMe()}

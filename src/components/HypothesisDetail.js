@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Card, Row, Col, Button, Spinner, Alert, Badge } from 'react-bootstrap';
-import { fetchHypothesisById } from '../services/hypothesisService';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Card, Row, Col, Button, Spinner, Alert, Badge, Modal } from 'react-bootstrap';
+import { fetchHypothesisById, deleteHypothesis } from '../services/hypothesisService';
 import { formatDate } from '../utils/dateFormat';
+import { useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Calendar3, 
@@ -13,14 +14,20 @@ import {
   JournalText, 
   ArrowRepeat, 
   ArrowClockwise, 
-  InfoCircleFill 
+  InfoCircleFill,
+  PatchQuestion,
+  Trash3Fill,
+  ExclamationTriangleFill 
 } from 'react-bootstrap-icons';
 
 const HypothesisDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [hypothesis, setHypothesis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const PHASE_CONFIG = {
     'construir': { name: 'Construir', icon: <BoxSeam size={20} />, color: 'primary' },
@@ -31,7 +38,6 @@ const HypothesisDetail = () => {
   };
 
   const HYPOTHESIS_FIELDS = {
-    problem: { title: 'Problema', color: 'primary' },
     solution: { title: 'Solución', color: 'success' },
     customerSegment: { title: 'Segmento de Clientes', color: 'info' },
     valueProposition: { title: 'Propuesta de Valor', color: 'warning' }
@@ -62,6 +68,28 @@ const HypothesisDetail = () => {
   };
 
   const openArtifactsPage = () => window.open(`/artifacts/${hypothesis.id}`, '_blank');
+
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    try {
+      await deleteHypothesis(hypothesis.id);
+      // Mostrar mensaje de éxito brevemente antes de redirigir
+      setShowDeleteModal(false);
+      setTimeout(() => {
+        navigate('/', { state: { message: 'Hipótesis eliminada exitosamente' } });
+      }, 500);
+    } catch (err) {
+      console.error('Error al eliminar hipótesis:', err);
+      setError('Error al eliminar la hipótesis. Por favor, inténtelo de nuevo.');
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const renderSpinner = () => (
     <div className="text-center my-5 fade-in">
@@ -101,39 +129,57 @@ const HypothesisDetail = () => {
         <Diagram3Fill className="me-2 text-primary" size={28} />
         Detalle de Hipótesis
       </h2>
-      <Link to="/">
-        <Button variant="outline-secondary" className="d-flex align-items-center">
-          <ArrowLeft className="me-2" size={16} />
-          Volver a la lista
+      <div className="d-flex gap-2">
+        <Button 
+          variant="danger" 
+          className="d-flex align-items-center"
+          onClick={handleDeleteClick}
+        >
+          <Trash3Fill className="me-2" size={16} />
+          Eliminar
         </Button>
-      </Link>
+        <Link to="/">
+          <Button variant="outline-secondary" className="d-flex align-items-center">
+            <ArrowLeft className="me-2" size={16} />
+            Volver a la lista
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 
   const renderHypothesisHeader = () => (
     <Card className="mb-4 shadow-sm hypothesis-detail-header">
       <Card.Body className="p-4">
-        <Row>
+        {/* Problema destacado primero */}
+        <div className="problem-highlight mb-4 p-4 bg-primary bg-opacity-10 rounded">
+          <h4 className="text-primary mb-3 d-flex align-items-center">
+            <PatchQuestion className="me-2" size={24} />
+            Problema Central
+          </h4>
+          <p className="lead mb-0">{hypothesis.problem}</p>
+        </div>
+        
+        {/* Luego el nombre y metadata */}
+        <Row className="mb-3">
           <Col>
-            <div className="d-flex justify-content-between">
-              <div>
-                <h3 className="mb-3">{hypothesis.name}</h3>
-                <div className="d-flex align-items-center mb-3">
-                  <Calendar3 className="text-muted me-2" size={16} />
-                  <span className="text-muted">Creada el {formatDate(hypothesis.createdAt)}</span>
-                  <Badge bg="info" className="ms-3 px-3 py-2">{getTotalArtifacts()} artefactos</Badge>
-                </div>
-              </div>
+            <h3 className="mb-2">{hypothesis.name}</h3>
+            <div className="d-flex align-items-center">
+              <Calendar3 className="text-muted me-2" size={16} />
+              <span className="text-muted">Creada el {formatDate(hypothesis.createdAt)}</span>
+              <Badge bg="info" className="ms-3 px-3 py-2">{getTotalArtifacts()} artefactos</Badge>
             </div>
           </Col>
         </Row>
+        
+        {/* Resto de campos */}
         {renderHypothesisFields()}
       </Card.Body>
     </Card>
   );
 
   const renderFieldCard = (field, value, config) => (
-    <Col md={6} className="mb-3" key={field}>
+    <Col md={field === 'solution' ? 12 : 6} className="mb-3" key={field}>
       <Card className="h-100 border-0 shadow-sm">
         <Card.Body>
           <h5 className={`phase-title text-${config.color}`}>{config.title}</h5>
@@ -144,17 +190,23 @@ const HypothesisDetail = () => {
   );
 
   const renderHypothesisFields = () => {
-    const fieldOrder = ['problem', 'solution', 'customerSegment', 'valueProposition'];
+    // Excluir 'problem' porque ya se muestra destacado arriba
     const rows = [];
     
-    for (let i = 0; i < fieldOrder.length; i += 2) {
-      rows.push(
-        <Row key={i}>
-          {renderFieldCard(fieldOrder[i], hypothesis[fieldOrder[i]], HYPOTHESIS_FIELDS[fieldOrder[i]])}
-          {fieldOrder[i + 1] && renderFieldCard(fieldOrder[i + 1], hypothesis[fieldOrder[i + 1]], HYPOTHESIS_FIELDS[fieldOrder[i + 1]])}
-        </Row>
-      );
-    }
+    // Solución ocupa todo el ancho
+    rows.push(
+      <Row key="solution" className="mb-3">
+        {renderFieldCard('solution', hypothesis.solution, HYPOTHESIS_FIELDS.solution)}
+      </Row>
+    );
+    
+    // Segmento y propuesta de valor lado a lado
+    rows.push(
+      <Row key="segment-value" className="mb-3">
+        {renderFieldCard('customerSegment', hypothesis.customerSegment, HYPOTHESIS_FIELDS.customerSegment)}
+        {renderFieldCard('valueProposition', hypothesis.valueProposition, HYPOTHESIS_FIELDS.valueProposition)}
+      </Row>
+    );
     
     return <>{rows}</>;
   };
@@ -193,10 +245,60 @@ const HypothesisDetail = () => {
         <div className="d-flex flex-wrap gap-3 mb-4">
           {Object.entries(PHASE_CONFIG).map(([phase, config]) => renderPhaseStatistic(phase, config))}
         </div>
-        <div className="text-center">
-        </div>
       </Card.Body>
     </Card>
+  );
+
+  const renderDeleteModal = () => (
+    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+      <Modal.Header closeButton>
+        <Modal.Title className="d-flex align-items-center text-danger">
+          <ExclamationTriangleFill className="me-2" size={24} />
+          Confirmar Eliminación
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Alert variant="warning" className="mb-3">
+          <Alert.Heading className="h6">⚠️ Esta acción no se puede deshacer</Alert.Heading>
+          <p className="mb-0 small">
+            Se eliminarán permanentemente:
+            <ul className="mb-0 mt-2">
+              <li>La hipótesis "{hypothesis?.name}"</li>
+              <li>Todos los artefactos asociados ({getTotalArtifacts()} en total)</li>
+              <li>Todo el historial y análisis de coherencia</li>
+            </ul>
+          </p>
+        </Alert>
+        <p>¿Está seguro de que desea eliminar esta hipótesis?</p>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button 
+          variant="secondary" 
+          onClick={() => setShowDeleteModal(false)}
+          disabled={deleting}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          variant="danger" 
+          onClick={handleDeleteConfirm}
+          disabled={deleting}
+          className="d-flex align-items-center"
+        >
+          {deleting ? (
+            <>
+              <Spinner size="sm" animation="border" className="me-2" />
+              Eliminando...
+            </>
+          ) : (
+            <>
+              <Trash3Fill className="me-2" size={16} />
+              Sí, eliminar
+            </>
+          )}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 
   const renderContent = () => (
@@ -204,6 +306,7 @@ const HypothesisDetail = () => {
       {renderHeader()}
       {renderHypothesisHeader()}
       {renderArtifactsSection()}
+      {renderDeleteModal()}
     </div>
   );
 

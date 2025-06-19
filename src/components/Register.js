@@ -29,16 +29,107 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    password: false,
+    confirmPassword: false
+  });
+  const [validationErrors, setValidationErrors] = useState({});
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const navigate = useNavigate();
-  
-  // Usar el contexto de autenticación
   const { register, error: authError, clearError } = useAuth();
 
-  // Limpiar errores cuando el componente se monta o desmonta
   useEffect(() => {
     clearError && clearError();
     return () => clearError && clearError();
   }, [clearError]);
+
+  // Validaciones individuales
+  const validateName = (name) => {
+    if (!name || name.trim().length === 0) {
+      return 'El nombre es requerido';
+    }
+    if (name.trim().length < 2) {
+      return 'El nombre debe tener al menos 2 caracteres';
+    }
+    return null;
+  };
+
+  const validateEmail = (email) => {
+    if (!email) {
+      return 'El correo electrónico es requerido';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Por favor ingrese un correo electrónico válido';
+    }
+    return null;
+  };
+
+  const validatePassword = (password) => {
+    if (!password) {
+      return 'La contraseña es requerida';
+    }
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    return null;
+  };
+
+  const validateConfirmPassword = (confirmPassword, password) => {
+    if (!confirmPassword) {
+      return 'Por favor confirme su contraseña';
+    }
+    if (confirmPassword !== password) {
+      return 'Las contraseñas no coinciden';
+    }
+    return null;
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    const nameError = validateName(formData.name);
+    const emailError = validateEmail(formData.email);
+    const passwordError = validatePassword(formData.password);
+    const confirmError = validateConfirmPassword(formData.confirmPassword, formData.password);
+    
+    if (nameError) errors.name = nameError;
+    if (emailError) errors.email = emailError;
+    if (passwordError) errors.password = passwordError;
+    if (confirmError) errors.confirmPassword = confirmError;
+    if (!acceptTerms) errors.terms = 'Debe aceptar los términos y condiciones';
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleBlur = (fieldName) => {
+    setTouched({ ...touched, [fieldName]: true });
+    
+    let error = null;
+    switch (fieldName) {
+      case 'name':
+        error = validateName(formData.name);
+        break;
+      case 'email':
+        error = validateEmail(formData.email);
+        break;
+      case 'password':
+        error = validatePassword(formData.password);
+        break;
+      case 'confirmPassword':
+        error = validateConfirmPassword(formData.confirmPassword, formData.password);
+        break;
+      default:
+        break;
+    }
+    
+    setValidationErrors({
+      ...validationErrors,
+      [fieldName]: error
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,24 +142,54 @@ const Register = () => {
     if (name === 'password') {
       calculatePasswordStrength(value);
     }
+    
+    // Validar en tiempo real si el campo ya fue tocado
+    if (touched[name]) {
+      let error = null;
+      switch (name) {
+        case 'name':
+          error = validateName(value);
+          break;
+        case 'email':
+          error = validateEmail(value);
+          break;
+        case 'password':
+          error = validatePassword(value);
+          // También revalidar confirmPassword si ya fue tocada
+          if (touched.confirmPassword && formData.confirmPassword) {
+            const confirmError = validateConfirmPassword(formData.confirmPassword, value);
+            setValidationErrors(prev => ({
+              ...prev,
+              confirmPassword: confirmError
+            }));
+          }
+          break;
+        case 'confirmPassword':
+          error = validateConfirmPassword(value, formData.password);
+          break;
+        default:
+          break;
+      }
+      
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+    
+    // Limpiar error general al escribir
+    if (localError) {
+      setLocalError(null);
+    }
   };
 
   const calculatePasswordStrength = (password) => {
-    // Criterios para medir la fortaleza de la contraseña
-    const lengthValid = password.length >= 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
-    // Calcular la puntuación de fortaleza
     let strength = 0;
-    if (lengthValid) strength += 20;
-    if (hasUpperCase) strength += 20;
-    if (hasLowerCase) strength += 20;
-    if (hasNumbers) strength += 20;
-    if (hasSpecialChar) strength += 20;
-    
+    if (password.length >= 6) strength += 20;
+    if (password.length >= 8) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/\d/.test(password)) strength += 20;
     setPasswordStrength(strength);
   };
 
@@ -86,20 +207,16 @@ const Register = () => {
     return 'success';
   };
 
-  const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setLocalError('Las contraseñas no coinciden');
-      return false;
-    }
-    if (formData.password.length < 6) {
-      setLocalError('La contraseña debe tener al menos 6 caracteres');
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Marcar todos los campos como tocados
+    setTouched({
+      name: true,
+      email: true,
+      password: true,
+      confirmPassword: true
+    });
     
     if (!validateForm()) {
       return;
@@ -116,25 +233,67 @@ const Register = () => {
           navigate('/');
         }, 2000);
       } else {
-        // Fallback para cuando no se usa AuthContext
         setLocalError('Error: Función de registro no disponible');
       }
     } catch (err) {
-      setLocalError(err.response?.data?.message || 'Error al registrar usuario');
+      if (err.response?.status === 400 && err.response?.data?.message?.includes('existe')) {
+        setLocalError('Ya existe una cuenta con este correo electrónico');
+      } else {
+        setLocalError(err.response?.data?.message || 'Error al registrar usuario');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Mostrar error de autenticación o error local
   const displayError = authError || localError;
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+
+  const renderFieldError = (fieldName) => {
+    if (touched[fieldName] && validationErrors[fieldName]) {
+      return (
+        <Form.Text className="text-danger d-flex align-items-center mt-1">
+          <XCircleFill className="me-1" size={12} />
+          {validationErrors[fieldName]}
+        </Form.Text>
+      );
+    }
+    return null;
   };
 
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
+  const renderFieldSuccess = (fieldName) => {
+    if (touched[fieldName] && !validationErrors[fieldName] && formData[fieldName]) {
+      return (
+        <Form.Text className="text-success d-flex align-items-center mt-1">
+          <CheckCircleFill className="me-1" size={12} />
+          Válido
+        </Form.Text>
+      );
+    }
+    return null;
+  };
+
+  const getInputClassName = (fieldName) => {
+    const baseClass = "bg-light border-start-0";
+    if (!touched[fieldName]) return baseClass;
+    if (validationErrors[fieldName]) return `${baseClass} is-invalid`;
+    if (formData[fieldName]) return `${baseClass} is-valid`;
+    return baseClass;
+  };
+
+  // Verificar si el formulario es válido para el botón
+  const isFormValid = () => {
+    return formData.name && 
+           formData.email && 
+           formData.password && 
+           formData.confirmPassword && 
+           acceptTerms &&
+           !validationErrors.name &&
+           !validationErrors.email &&
+           !validationErrors.password &&
+           !validationErrors.confirmPassword;
   };
 
   return (
@@ -166,10 +325,10 @@ const Register = () => {
                       <div>{displayError}</div>
                     </Alert>
                   )}
-                  <Form onSubmit={handleSubmit}>
+                  <Form onSubmit={handleSubmit} noValidate>
                     <Form.Group className="mb-4">
                       <Form.Label>Nombre Completo</Form.Label>
-                      <InputGroup>
+                      <InputGroup className={touched.name && validationErrors.name ? 'has-validation' : ''}>
                         <InputGroup.Text className="bg-light border-end-0">
                           <PersonFill className="text-muted" size={16} />
                         </InputGroup.Text>
@@ -178,16 +337,21 @@ const Register = () => {
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
+                          onBlur={() => handleBlur('name')}
                           placeholder="Ingrese su nombre completo"
-                          className="bg-light border-start-0"
+                          className={getInputClassName('name')}
                           required
+                          isInvalid={touched.name && !!validationErrors.name}
+                          isValid={touched.name && !validationErrors.name && !!formData.name}
                         />
                       </InputGroup>
+                      {renderFieldError('name')}
+                      {renderFieldSuccess('name')}
                     </Form.Group>
 
                     <Form.Group className="mb-4">
                       <Form.Label>Correo Electrónico</Form.Label>
-                      <InputGroup>
+                      <InputGroup className={touched.email && validationErrors.email ? 'has-validation' : ''}>
                         <InputGroup.Text className="bg-light border-end-0">
                           <EnvelopeFill className="text-muted" size={16} />
                         </InputGroup.Text>
@@ -196,19 +360,26 @@ const Register = () => {
                           name="email"
                           value={formData.email}
                           onChange={handleChange}
+                          onBlur={() => handleBlur('email')}
                           placeholder="nombre@ejemplo.com"
-                          className="bg-light border-start-0"
+                          className={getInputClassName('email')}
                           required
+                          isInvalid={touched.email && !!validationErrors.email}
+                          isValid={touched.email && !validationErrors.email && !!formData.email}
                         />
                       </InputGroup>
-                      <Form.Text className="text-muted">
-                        No compartiremos su correo con nadie más.
-                      </Form.Text>
+                      {renderFieldError('email')}
+                      {renderFieldSuccess('email')}
+                      {!validationErrors.email && touched.email && (
+                        <Form.Text className="text-muted">
+                          No compartiremos su correo con nadie más.
+                        </Form.Text>
+                      )}
                     </Form.Group>
 
                     <Form.Group className="mb-4">
                       <Form.Label>Contraseña</Form.Label>
-                      <InputGroup>
+                      <InputGroup className={touched.password && validationErrors.password ? 'has-validation' : ''}>
                         <InputGroup.Text className="bg-light border-end-0">
                           <LockFill className="text-muted" size={16} />
                         </InputGroup.Text>
@@ -217,9 +388,12 @@ const Register = () => {
                           name="password"
                           value={formData.password}
                           onChange={handleChange}
+                          onBlur={() => handleBlur('password')}
                           placeholder="Mínimo 6 caracteres"
-                          className="bg-light border-start-0 border-end-0"
+                          className={getInputClassName('password') + ' border-end-0'}
                           required
+                          isInvalid={touched.password && !!validationErrors.password}
+                          isValid={touched.password && !validationErrors.password && !!formData.password}
                         />
                         <InputGroup.Text 
                           className="bg-light border-start-0 cursor-pointer"
@@ -232,8 +406,10 @@ const Register = () => {
                           }
                         </InputGroup.Text>
                       </InputGroup>
+                      {renderFieldError('password')}
+                      {renderFieldSuccess('password')}
                       
-                      {formData.password && (
+                      {formData.password && !validationErrors.password && (
                         <div className="mt-2">
                           <div className="d-flex justify-content-between align-items-center mb-1">
                             <small className="text-muted">Fortaleza:</small>
@@ -246,43 +422,13 @@ const Register = () => {
                             variant={getPasswordStrengthColor()} 
                             style={{ height: '6px' }}
                           />
-                          
-                          <div className="password-requirements mt-3">
-                            <small className="d-block mb-2 text-muted">La contraseña debe tener:</small>
-                            <div className="d-flex flex-wrap">
-                              <div className="password-requirement me-3 mb-2 d-flex align-items-center">
-                                {formData.password.length >= 6 ? (
-                                  <CheckCircleFill className="me-1 text-success" size={12} />
-                                ) : (
-                                  <XCircleFill className="me-1 text-muted" size={12} />
-                                )}
-                                <small className="text-muted">Mínimo 6 caracteres</small>
-                              </div>
-                              <div className="password-requirement me-3 mb-2 d-flex align-items-center">
-                                {/[A-Z]/.test(formData.password) ? (
-                                  <CheckCircleFill className="me-1 text-success" size={12} />
-                                ) : (
-                                  <XCircleFill className="me-1 text-muted" size={12} />
-                                )}
-                                <small className="text-muted">Mayúsculas</small>
-                              </div>
-                              <div className="password-requirement me-3 mb-2 d-flex align-items-center">
-                                {/\d/.test(formData.password) ? (
-                                  <CheckCircleFill className="me-1 text-success" size={12} />
-                                ) : (
-                                  <XCircleFill className="me-1 text-muted" size={12} />
-                                )}
-                                <small className="text-muted">Números</small>
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       )}
                     </Form.Group>
 
                     <Form.Group className="mb-4">
                       <Form.Label>Confirmar Contraseña</Form.Label>
-                      <InputGroup>
+                      <InputGroup className={touched.confirmPassword && validationErrors.confirmPassword ? 'has-validation' : ''}>
                         <InputGroup.Text className="bg-light border-end-0">
                           <LockFill className="text-muted" size={16} />
                         </InputGroup.Text>
@@ -291,9 +437,12 @@ const Register = () => {
                           name="confirmPassword"
                           value={formData.confirmPassword}
                           onChange={handleChange}
+                          onBlur={() => handleBlur('confirmPassword')}
                           placeholder="Vuelva a ingresar su contraseña"
-                          className="bg-light border-start-0 border-end-0"
+                          className={getInputClassName('confirmPassword') + ' border-end-0'}
                           required
+                          isInvalid={touched.confirmPassword && !!validationErrors.confirmPassword}
+                          isValid={touched.confirmPassword && !validationErrors.confirmPassword && !!formData.confirmPassword}
                         />
                         <InputGroup.Text 
                           className="bg-light border-start-0 cursor-pointer"
@@ -306,27 +455,16 @@ const Register = () => {
                           }
                         </InputGroup.Text>
                       </InputGroup>
-                      {formData.password && formData.confirmPassword && (
-                        <div className="mt-2">
-                          {formData.password === formData.confirmPassword ? (
-                            <small className="text-success d-flex align-items-center">
-                              <CheckCircleFill className="me-1" size={12} />
-                              Las contraseñas coinciden
-                            </small>
-                          ) : (
-                            <small className="text-danger d-flex align-items-center">
-                              <XCircleFill className="me-1" size={12} />
-                              Las contraseñas no coinciden
-                            </small>
-                          )}
-                        </div>
-                      )}
+                      {renderFieldError('confirmPassword')}
+                      {renderFieldSuccess('confirmPassword')}
                     </Form.Group>
 
                     <Form.Group className="mb-4">
                       <Form.Check 
                         type="checkbox" 
                         id="termsAgree" 
+                        checked={acceptTerms}
+                        onChange={(e) => setAcceptTerms(e.target.checked)}
                         label={
                           <span className="text-muted small">
                             He leído y acepto los <Link to="/terms" className="text-decoration-none">Términos y Condiciones</Link> y la <Link to="/privacy" className="text-decoration-none">Política de Privacidad</Link>
@@ -334,6 +472,11 @@ const Register = () => {
                         }
                         required
                       />
+                      {touched.confirmPassword && !acceptTerms && (
+                        <Form.Text className="text-danger small">
+                          Debe aceptar los términos y condiciones
+                        </Form.Text>
+                      )}
                     </Form.Group>
 
                     <div className="d-grid gap-2 mb-4">

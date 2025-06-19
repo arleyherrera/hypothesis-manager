@@ -652,3 +652,52 @@ p {
   max-height: 500px;
   font-size: 0.875rem;
 }
+
+/* Agregar estos estilos al final de tu App.css existente */
+
+/* Destacar sección de problema */
+.problem-section {
+  border-left: 4px solid var(--primary);
+  background-color: rgba(58, 134, 255, 0.05);
+}
+
+.problem-highlight {
+  border: 2px solid rgba(58, 134, 255, 0.2);
+  background: linear-gradient(135deg, rgba(58, 134, 255, 0.05) 0%, rgba(58, 134, 255, 0.02) 100%);
+}
+
+/* Tarjeta de hipótesis con problema destacado */
+.hypothesis-card .problem-section {
+  transition: all 0.3s ease;
+}
+
+.hypothesis-card:hover .problem-section {
+  background-color: rgba(58, 134, 255, 0.1);
+  transform: translateX(2px);
+}
+
+/* Campo de problema en formulario */
+.border-primary.border-2 {
+  border-color: var(--primary) !important;
+  border-width: 2px !important;
+}
+
+/* Animación suave para el problema */
+.problem-section h6 {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+}
+
+/* Alert de problema en artifacts page */
+.alert-primary .alert-heading {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Mejoras adicionales para el problema */
+.problem-highlight p.lead {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}

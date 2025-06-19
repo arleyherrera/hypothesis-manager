@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Spinner, Alert, Badge } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { fetchHypotheses } from '../services/hypothesisService';
 import { formatDate } from '../utils/dateFormat';
 import { 
@@ -9,7 +9,9 @@ import {
   ArrowRightCircle, 
   ExclamationTriangle,
   PlusCircle, 
-  Search 
+  Search,
+  PatchQuestion,
+  CheckCircle 
 } from 'react-bootstrap-icons';
 
 const HypothesisList = () => {
@@ -17,10 +19,12 @@ const HypothesisList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const location = useLocation();
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
   const TEXT_TRUNCATE_LIMITS = {
-    PROBLEM: 100,
-    SEGMENT: 100
+    PROBLEM: 150,
+    SEGMENT: 80
   };
 
   const loadHypotheses = async () => {
@@ -41,10 +45,25 @@ const HypothesisList = () => {
     loadHypotheses();
   }, []);
 
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+        // Limpiar el state de la navegación
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   const filterHypotheses = () => {
-    return hypotheses.filter(hypothesis =>
-      hypothesis && hypothesis.name && hypothesis.name.toLowerCase().includes((searchTerm || '').toLowerCase())
-    );
+    const searchLower = (searchTerm || '').toLowerCase();
+    return hypotheses.filter(hypothesis => {
+      if (!hypothesis) return false;
+      const nameMatch = hypothesis.name && hypothesis.name.toLowerCase().includes(searchLower);
+      const problemMatch = hypothesis.problem && hypothesis.problem.toLowerCase().includes(searchLower);
+      return nameMatch || problemMatch;
+    });
   };
 
   const truncateText = (text, limit) => {
@@ -53,6 +72,15 @@ const HypothesisList = () => {
   };
 
   const hasArtifacts = (hypothesis) => hypothesis.artifacts && hypothesis.artifacts.length > 0;
+
+  const renderSuccessMessage = () => successMessage && (
+    <Alert variant="success" dismissible onClose={() => setSuccessMessage('')} className="mb-4">
+      <div className="d-flex align-items-center">
+        <CheckCircle className="me-2" size={20} />
+        {successMessage}
+      </div>
+    </Alert>
+  );
 
   const renderLoadingSpinner = () => (
     <div className="text-center my-5 fade-in">
@@ -104,7 +132,7 @@ const HypothesisList = () => {
         <input
           type="text"
           className="form-control border-start-0"
-          placeholder="Buscar hipótesis..."
+          placeholder="Buscar por problema o nombre..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -134,9 +162,9 @@ const HypothesisList = () => {
 
   const renderHypothesisCard = (hypothesis) => (
     <Col key={hypothesis.id}>
-      <Card className="h-100">
+      <Card className="h-100 hypothesis-card">
         <Card.Body>
-          <div className="d-flex justify-content-between mb-3">
+          <div className="d-flex justify-content-between mb-2">
             <Badge bg={hasArtifacts(hypothesis) ? "success" : "secondary"} className="px-3 py-2">
               {hasArtifacts(hypothesis) ? 'Con artefactos' : 'Sin artefactos'}
             </Badge>
@@ -146,15 +174,26 @@ const HypothesisList = () => {
             </small>
           </div>
           
-          <Card.Title className="mb-3">{hypothesis.name}</Card.Title>
+          {/* PROBLEMA PRIMERO con diseño destacado */}
+          <div className="problem-section mb-3 p-3 bg-light rounded">
+            <h6 className="text-primary mb-2 d-flex align-items-center">
+              <PatchQuestion className="me-2" size={18} />
+              Problema Identificado
+            </h6>
+            <p className="mb-0 text-dark">
+              {truncateText(hypothesis.problem, TEXT_TRUNCATE_LIMITS.PROBLEM)}
+            </p>
+          </div>
           
-          <Card.Text className="mb-2">
-            <strong>Problema:</strong> {truncateText(hypothesis.problem, TEXT_TRUNCATE_LIMITS.PROBLEM)}
-          </Card.Text>
+          {/* Nombre como subtítulo */}
+          <h5 className="card-title text-secondary mb-2">
+            {hypothesis.name}
+          </h5>
           
-          <Card.Text>
+          {/* Segmento más pequeño */}
+          <p className="text-muted small mb-0">
             <strong>Segmento:</strong> {truncateText(hypothesis.customerSegment, TEXT_TRUNCATE_LIMITS.SEGMENT)}
-          </Card.Text>
+          </p>
         </Card.Body>
         <Card.Footer className="bg-white">
           <Link to={`/hypothesis/${hypothesis.id}`} className="w-100">
@@ -190,6 +229,7 @@ const HypothesisList = () => {
   const renderContent = () => (
     <div className="fade-in">
       {renderHeader()}
+      {renderSuccessMessage()}
       {hypotheses.length > 0 && renderSearchBar()}
       {hypotheses.length === 0 ? renderEmptyState() : renderHypothesesGrid()}
     </div>

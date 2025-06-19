@@ -17,8 +17,8 @@ import { saveHypothesis } from '../services/hypothesisService';
 const HypothesisForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
     problem: '',
+    name: '',
     solution: '',
     customerSegment: '',
     valueProposition: '',
@@ -29,17 +29,43 @@ const HypothesisForm = () => {
   const [success, setSuccess] = useState(false);
 
   const FORM_FIELDS = {
-    name: { label: 'Nombre de la Hipótesis', placeholder: 'Ej: Servicio de entrega rápida de comida', helpText: 'Un nombre descriptivo que resuma su idea de negocio' },
-    problem: { label: 'Problema', placeholder: 'Describa el problema que está intentando resolver de forma detallada...', helpText: '¿Qué dolor o necesidad experimenta su cliente objetivo?', icon: <PatchQuestion size={24} />, color: 'primary' },
-    solution: { label: 'Solución', placeholder: 'Describa la solución que propone para resolver el problema...', helpText: '¿Cómo su producto o servicio resuelve el problema identificado?', icon: <LightbulbFill size={24} />, color: 'success' },
-    customerSegment: { label: 'Segmento de Clientes', placeholder: 'Describa quiénes son sus clientes objetivo de manera específica...', helpText: 'Sea específico: edad, ubicación, comportamientos, etc.', icon: <PeopleFill size={24} />, color: 'info' },
-    valueProposition: { label: 'Propuesta de Valor', placeholder: '¿Por qué los clientes elegirían su solución sobre otras alternativas?', helpText: '¿Qué hace única a su solución? ¿Cuál es su ventaja competitiva?', icon: <Trophy size={24} />, color: 'warning' }
+    problem: { 
+      label: 'Problema', 
+      placeholder: 'Describa detalladamente el problema que está observando. Sea específico: ¿Quién lo experimenta? ¿Cuándo ocurre? ¿Qué consecuencias tiene?', 
+      helpText: '¿Qué dolor, frustración o necesidad no satisfecha experimenta su cliente objetivo? Mínimo 20 caracteres.', 
+      icon: <PatchQuestion size={24} />, 
+      color: 'primary' 
+    },
+    name: { 
+      label: 'Nombre de la Hipótesis', 
+      placeholder: 'Un nombre corto y descriptivo para identificar esta hipótesis', 
+      helpText: 'Un título que resuma el problema y la solución propuesta' 
+    },
+    solution: { 
+      label: 'Solución', 
+      placeholder: 'Describa la solución que propone para resolver el problema identificado...', 
+      helpText: '¿Cómo su producto o servicio resuelve específicamente el problema?', 
+      icon: <LightbulbFill size={24} />, 
+      color: 'success' 
+    },
+    customerSegment: { 
+      label: 'Segmento de Clientes', 
+      placeholder: 'Describa quiénes son sus clientes objetivo de manera específica...', 
+      helpText: 'Sea específico: edad, ubicación, comportamientos, etc.', 
+      icon: <PeopleFill size={24} />, 
+      color: 'info' 
+    },
+    valueProposition: { 
+      label: 'Propuesta de Valor', 
+      placeholder: '¿Por qué los clientes elegirían su solución sobre otras alternativas?', 
+      helpText: '¿Qué hace única a su solución? ¿Cuál es su ventaja competitiva?', 
+      icon: <Trophy size={24} />, 
+      color: 'warning' 
+    }
   };
 
   const TOTAL_FIELDS = 5;
   const SUCCESS_REDIRECT_DELAY = 1500;
-  const FIELD_ROWS = 5;
-  const SEGMENT_VALUE_ROWS = 4;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,9 +79,26 @@ const HypothesisForm = () => {
     return (filled / TOTAL_FIELDS) * 100;
   };
 
+  const validateProblem = (problem) => {
+    if (!problem || problem.trim().length < 20) {
+      return 'El problema debe tener al menos 20 caracteres para ser suficientemente específico';
+    }
+    if (problem.split(/\s+/).length < 5) {
+      return 'Por favor, describa el problema con más detalle (mínimo 5 palabras)';
+    }
+    return null;
+  };
+
   const handleFormSubmit = async (formEvent) => {
     formEvent.preventDefault();
     const form = formEvent.currentTarget;
+    
+    // Validar problema específicamente
+    const problemError = validateProblem(formData.problem);
+    if (problemError) {
+      setError(problemError);
+      return;
+    }
     
     if (!form.checkValidity()) {
       formEvent.stopPropagation();
@@ -124,27 +167,6 @@ const HypothesisForm = () => {
   const renderSuccessAlert = () => renderAlert('success', <CheckCircle className="me-3" size={24} />, '¡Excelente!', 'Hipótesis guardada correctamente. Redirigiendo...');
   const renderErrorAlert = () => renderAlert('danger', <ExclamationTriangle className="me-3" size={24} />, 'Ha ocurrido un error', error);
 
-  const renderNameField = () => (
-    <Row className="mb-4">
-      <Col>
-        <Form.Group>
-          <Form.Label><strong>{FORM_FIELDS.name.label}</strong></Form.Label>
-          <Form.Control
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder={FORM_FIELDS.name.placeholder}
-            className="form-control-lg"
-            required
-          />
-          <Form.Text className="text-muted">{FORM_FIELDS.name.helpText}</Form.Text>
-          <Form.Control.Feedback type="invalid">Por favor ingrese un nombre para su hipótesis.</Form.Control.Feedback>
-        </Form.Group>
-      </Col>
-    </Row>
-  );
-
   const renderFieldCard = (fieldName, rows) => {
     const field = FORM_FIELDS[fieldName];
     return (
@@ -162,9 +184,15 @@ const HypothesisForm = () => {
             onChange={handleChange}
             placeholder={field.placeholder}
             required
+            className={fieldName === 'problem' ? 'form-control-lg' : ''}
           />
           <Form.Text className="text-muted d-block mt-2">{field.helpText}</Form.Text>
-          <Form.Control.Feedback type="invalid">Por favor {fieldName === 'problem' ? 'describa el problema a resolver' : fieldName === 'solution' ? 'describa su solución propuesta' : fieldName === 'customerSegment' ? 'identifique su segmento de clientes' : 'defina su propuesta de valor'}.</Form.Control.Feedback>
+          <Form.Control.Feedback type="invalid">
+            {fieldName === 'problem' ? 'El problema debe tener al menos 20 caracteres y 5 palabras' : 
+             fieldName === 'solution' ? 'Por favor describa su solución propuesta' : 
+             fieldName === 'customerSegment' ? 'Por favor identifique su segmento de clientes' : 
+             'Por favor defina su propuesta de valor'}
+          </Form.Control.Feedback>
         </Card.Body>
       </Card>
     );
@@ -172,13 +200,73 @@ const HypothesisForm = () => {
 
   const renderFieldPairs = () => (
     <>
+      {/* PROBLEMA PRIMERO - Ocupa todo el ancho */}
       <Row className="mb-4">
-        <Col md={6}>{renderFieldCard('problem', FIELD_ROWS)}</Col>
-        <Col md={6}>{renderFieldCard('solution', FIELD_ROWS)}</Col>
+        <Col md={12}>
+          <Card className="h-100 shadow-sm border-0 border-primary border-2">
+            <Card.Body>
+              <div className="d-flex align-items-center mb-3">
+                <div className="bg-primary rounded-circle p-2 me-3 text-white">
+                  <PatchQuestion size={24} />
+                </div>
+                <div>
+                  <Form.Label className="mb-0 fw-bold">Problema</Form.Label>
+                  <small className="text-primary d-block">Este es el punto de partida más importante</small>
+                </div>
+              </div>
+              <Form.Control
+                as="textarea"
+                rows={5}
+                name="problem"
+                value={formData.problem}
+                onChange={handleChange}
+                placeholder="Describa detalladamente el problema que está observando. Sea específico: ¿Quién lo experimenta? ¿Cuándo ocurre? ¿Qué consecuencias tiene?"
+                required
+                className="form-control-lg"
+              />
+              <Form.Text className="text-muted d-block mt-2">
+                Un problema bien definido es la base de una hipótesis exitosa. Mínimo 20 caracteres.
+              </Form.Text>
+              <Form.Control.Feedback type="invalid">
+                El problema debe tener al menos 20 caracteres para ser suficientemente específico.
+              </Form.Control.Feedback>
+            </Card.Body>
+          </Card>
+        </Col>
       </Row>
+      
+      {/* Luego el nombre de la hipótesis */}
       <Row className="mb-4">
-        <Col md={6}>{renderFieldCard('customerSegment', SEGMENT_VALUE_ROWS)}</Col>
-        <Col md={6}>{renderFieldCard('valueProposition', SEGMENT_VALUE_ROWS)}</Col>
+        <Col md={12}>
+          <Form.Group>
+            <Form.Label><strong>Nombre de la Hipótesis</strong></Form.Label>
+            <Form.Control
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Un nombre corto y descriptivo para identificar esta hipótesis"
+              required
+            />
+            <Form.Text className="text-muted">
+              Un título que resuma el problema y la solución propuesta
+            </Form.Text>
+            <Form.Control.Feedback type="invalid">
+              Por favor ingrese un nombre para su hipótesis.
+            </Form.Control.Feedback>
+          </Form.Group>
+        </Col>
+      </Row>
+      
+      {/* Solución a la par con segmento */}
+      <Row className="mb-4">
+        <Col md={6}>{renderFieldCard('solution', 5)}</Col>
+        <Col md={6}>{renderFieldCard('customerSegment', 5)}</Col>
+      </Row>
+      
+      {/* Propuesta de valor sola */}
+      <Row className="mb-4">
+        <Col md={12}>{renderFieldCard('valueProposition', 4)}</Col>
       </Row>
     </>
   );
@@ -212,7 +300,6 @@ const HypothesisForm = () => {
 
   const renderForm = () => (
     <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
-      {renderNameField()}
       {renderFieldPairs()}
       {renderSubmitButton()}
     </Form>

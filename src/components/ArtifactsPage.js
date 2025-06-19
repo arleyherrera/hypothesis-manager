@@ -11,7 +11,8 @@ import {
   ArrowRepeat, 
   ArrowClockwise,
   ArrowLeft,
-  InfoCircleFill
+  InfoCircleFill,
+  PatchQuestion
 } from 'react-bootstrap-icons';
 
 const ArtifactsPage = () => {
@@ -109,14 +110,25 @@ const ArtifactsPage = () => {
   );
 
   const renderHypothesisInfo = () => (
-    <div className="mb-4">
-      <h3>{hypothesis.name}</h3>
-      <div className="d-flex align-items-center text-muted">
-        <InfoCircleFill className="me-2" size={14} />
-        <p className="mb-0">Seleccione una fase para ver sus artefactos</p>
+  <div className="mb-4">
+    {/* Problema primero */}
+    <div className="alert alert-primary d-flex align-items-start mb-3">
+      <PatchQuestion className="me-3 mt-1 flex-shrink-0" size={20} />
+      <div>
+        <h6 className="alert-heading mb-1">Problema a Resolver</h6>
+        <p className="mb-0">{hypothesis.problem}</p>
       </div>
     </div>
-  );
+    
+    {/* Nombre de la hipótesis */}
+    <h3 className="text-secondary">{hypothesis.name}</h3>
+    
+    <div className="d-flex align-items-center text-muted">
+      <InfoCircleFill className="me-2" size={14} />
+      <p className="mb-0">Seleccione una fase para ver los artefactos generados</p>
+    </div>
+  </div>
+);
 
   const renderTabTitle = (phase) => {
     const config = PHASE_CONFIG[phase];
