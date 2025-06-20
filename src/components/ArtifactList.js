@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Modal, Spinner, Alert, Row, Col, Badge, Form, Table, ButtonGroup } from 'react-bootstrap';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownViewer from './MarkdownViewer'; // Importar el nuevo componente
 import { generateArtifacts } from '../services/artifactService';
 import { generateArtifactWithAI, improveAllArtifactsWithAI } from '../services/aiService';
 import { fetchHypothesisById } from '../services/hypothesisService';
@@ -52,58 +51,6 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
   const AI_SUCCESS_MESSAGE = '¡Artefacto generado con éxito!';
   const ARTIFACT_REFRESH_DELAY = 1000;
   const AI_STATUS_UPDATE_DELAY = 1500;
-
-  // Componentes mejorados para markdown
-  const markdownComponents = {
-    h1: ({children}) => <h1 className="h3 mb-3 mt-4 text-primary">{children}</h1>,
-    h2: ({children}) => <h2 className="h4 mb-3 mt-4">{children}</h2>,
-    h3: ({children}) => <h3 className="h5 mb-2 mt-3">{children}</h3>,
-    h4: ({children}) => <h4 className="h6 mb-2 mt-3">{children}</h4>,
-    p: ({children}) => <p className="mb-3 text-body">{children}</p>,
-    ul: ({children}) => <ul className="ms-3 mb-3">{children}</ul>,
-    ol: ({children}) => <ol className="ms-3 mb-3">{children}</ol>,
-    li: ({children}) => <li className="mb-2">{children}</li>,
-    code: ({inline, className, children, ...props}) => {
-      if (inline) {
-        return <code className="bg-light px-2 py-1 rounded text-danger">{children}</code>;
-      }
-      
-      // Para bloques de código
-      return (
-        <pre className="bg-light p-3 rounded overflow-auto mb-3">
-          <code className={className}>{children}</code>
-        </pre>
-      );
-    },
-    pre: ({children, ...props}) => {
-      // Si el pre contiene un code, dejar que el componente code lo maneje
-      if (children?.props?.mdxType === 'code' || children?.type?.name === 'code') {
-        return <>{children}</>;
-      }
-      // Si no, renderizar como pre normal
-      return <pre className="bg-light p-3 rounded overflow-auto mb-3" {...props}>{children}</pre>;
-    },
-    blockquote: ({children}) => (
-      <blockquote className="border-start border-4 border-primary ps-3 my-3 text-muted">
-        {children}
-      </blockquote>
-    ),
-    table: ({children}) => (
-      <div className="table-responsive my-3">
-        <Table striped bordered hover size="sm">
-          {children}
-        </Table>
-      </div>
-    ),
-    a: ({href, children}) => (
-      <a href={href} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
-        {children}
-      </a>
-    ),
-    hr: () => <hr className="my-4" />,
-    strong: ({children}) => <strong className="fw-bold">{children}</strong>,
-    em: ({children}) => <em className="fst-italic">{children}</em>
-  };
 
   useEffect(() => {
     const loadHypothesis = async () => {
@@ -180,7 +127,6 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
     
     try {
       await improveAllArtifactsWithAI(hypothesisId, phase);
-      // Recargar para mostrar los cambios
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -250,7 +196,6 @@ ${selectedArtifact.content}
           </div>
         </div>
         
-        {/* Botón para mejorar todos */}
         {artifacts.length > 0 && !allImproved && (
           <Button 
             variant="success" 
@@ -451,87 +396,7 @@ ${selectedArtifact.content}
     </div>
   );
 
-  // Función mejorada para limpiar el contenido
-  const cleanMarkdownContent = (content) => {
-    if (!content) return '';
-    
-    let cleaned = content.trim();
-    
-    // Primero, detectar si el contenido está envuelto en tags HTML de código
-    // Patrón para detectar <pre> y <code> tags
-    const preCodePattern = /<pre[^>]*>[\s\S]*?<code[^>]*>([\s\S]*?)<\/code>[\s\S]*?<\/pre>/gi;
-    const codePattern = /<code[^>]*>([\s\S]*?)<\/code>/gi;
-    
-    // Si encuentra el patrón de pre>code, extraer solo el contenido interno
-    let match = preCodePattern.exec(cleaned);
-    if (match) {
-      cleaned = match[1];
-    } else {
-      // Si solo encuentra code tags
-      match = codePattern.exec(cleaned);
-      if (match) {
-        cleaned = match[1];
-      }
-    }
-    
-    // Decodificar entidades HTML
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = cleaned;
-    cleaned = textarea.value;
-    
-    // Eliminar backticks al inicio y al final con diferentes formatos
-    // Primero intentar con el formato ```markdown o ```md
-    if (cleaned.startsWith('```markdown') || cleaned.startsWith('```md')) {
-      cleaned = cleaned.replace(/^```(markdown|md)\n?/, '');
-    } else if (cleaned.startsWith('```')) {
-      // Si empieza con ``` sin especificar lenguaje
-      cleaned = cleaned.replace(/^```\n?/, '');
-    }
-    
-    // Eliminar backticks al final
-    if (cleaned.endsWith('```')) {
-      cleaned = cleaned.replace(/\n?```$/, '');
-    }
-    
-    // Si aún tiene backticks, intentar limpiar de forma más agresiva
-    while (cleaned.includes('```') && cleaned.startsWith('```')) {
-      cleaned = cleaned.substring(3);
-      if (cleaned.startsWith('markdown\n') || cleaned.startsWith('md\n')) {
-        cleaned = cleaned.substring(cleaned.indexOf('\n') + 1);
-      }
-    }
-    
-    // Eliminar backticks finales si quedan
-    while (cleaned.endsWith('```')) {
-      cleaned = cleaned.substring(0, cleaned.length - 3);
-    }
-    
-    // Limpiar tags HTML duplicados o mal formados
-    cleaned = cleaned.replace(/<pre><pre/g, '<pre');
-    cleaned = cleaned.replace(/<\/pre><\/pre>/g, '</pre>');
-    cleaned = cleaned.replace(/<code><code/g, '<code');
-    cleaned = cleaned.replace(/<\/code><\/code>/g, '</code>');
-    
-    // Trim final
-    cleaned = cleaned.trim();
-    
-    console.log('Contenido limpio final:', cleaned.substring(0, 200) + '...'); // Para debug
-    
-    return cleaned;
-  };
-
   const renderModalBody = () => {
-    // Obtener el contenido limpio
-    const cleanedContent = cleanMarkdownContent(selectedArtifact.content);
-    
-    // Para debug - ver exactamente qué está pasando
-    console.log('=== DEBUG CONTENIDO ===');
-    console.log('Tipo de contenido:', typeof selectedArtifact.content);
-    console.log('Primeros 500 caracteres originales:', selectedArtifact.content.substring(0, 500));
-    console.log('Primeros 500 caracteres limpios:', cleanedContent.substring(0, 500));
-    console.log('¿Contiene <pre>?', selectedArtifact.content.includes('<pre>'));
-    console.log('¿Contiene ```?', selectedArtifact.content.includes('```'));
-    
     return (
       <Modal.Body className="pt-2">
         <Badge bg={currentPhaseConfig.color} className="mb-3">
@@ -546,16 +411,9 @@ ${selectedArtifact.content}
         <Card className="border-0 shadow-sm">
           <Card.Body>
             {renderViewModeToggle()}
-            <div className="artifact-content markdown-rendered">
+            <div className="artifact-content">
               {viewMode === 'formatted' ? (
-                <div className="formatted-content">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents}
-                  >
-                    {cleanedContent}
-                  </ReactMarkdown>
-                </div>
+                <MarkdownViewer content={selectedArtifact.content} />
               ) : (
                 <pre className="bg-light p-3 rounded overflow-auto">
                   <code>{selectedArtifact.content}</code>

@@ -1,3 +1,4 @@
+// src/components/Login.js
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Card, Alert, Row, Col, Container, InputGroup } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,9 +11,11 @@ import {
   EyeSlashFill,
   Lightbulb,
   CheckCircleFill,
-  XCircleFill
+  XCircleFill,
+  InfoCircleFill
 } from 'react-bootstrap-icons';
 import { useAuth } from '../context/AuthContext';
+import { validators, sanitizers, detectEmailTypo } from '../utils/validation';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -21,6 +24,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
   const [validationErrors, setValidationErrors] = useState({});
+  const [emailSuggestion, setEmailSuggestion] = useState(null);
   const navigate = useNavigate();
   const { login, error: authError, clearError } = useAuth();
 
@@ -39,34 +43,43 @@ const Login = () => {
     return () => clearError && clearError();
   }, [clearError]);
 
-  // Validar email
-  const validateEmail = (email) => {
+  // Validar email para login (menos estricto que registro)
+  const validateLoginEmail = (email) => {
     if (!email) {
       return 'El correo electrónico es requerido';
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return 'Por favor ingrese un correo electrónico válido';
+    
+    // Validación básica de email
+    const basicValidation = validators.email(email);
+    if (basicValidation) {
+      return basicValidation;
     }
+    
+    // Detectar posibles typos
+    const suggestion = detectEmailTypo(email);
+    if (suggestion && suggestion !== email) {
+      setEmailSuggestion(suggestion);
+    } else {
+      setEmailSuggestion(null);
+    }
+    
     return null;
   };
 
-  // Validar contraseña
-  const validatePassword = (password) => {
+  // Validar contraseña para login (solo verificar que no esté vacía)
+  const validateLoginPassword = (password) => {
     if (!password) {
       return 'La contraseña es requerida';
     }
-    if (password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres';
-    }
+    // No validar complejidad en login, solo en registro
     return null;
   };
 
   // Validar todo el formulario
   const validateForm = () => {
     const errors = {};
-    const emailError = validateEmail(formData.email);
-    const passwordError = validatePassword(formData.password);
+    const emailError = validateLoginEmail(formData.email);
+    const passwordError = validateLoginPassword(formData.password);
     
     if (emailError) errors.email = emailError;
     if (passwordError) errors.password = passwordError;
@@ -81,9 +94,9 @@ const Login = () => {
     
     let error = null;
     if (fieldName === 'email') {
-      error = validateEmail(formData.email);
+      error = validateLoginEmail(formData.email);
     } else if (fieldName === 'password') {
-      error = validatePassword(formData.password);
+      error = validateLoginPassword(formData.password);
     }
     
     setValidationErrors({
@@ -94,15 +107,19 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Sanitizar email
+    const sanitizedValue = name === 'email' ? sanitizers.email(value) : value;
+    
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
     
     // Limpiar error del campo si ya fue tocado
     if (touched[name]) {
       let error = null;
       if (name === 'email') {
-        error = validateEmail(value);
+        error = validateLoginEmail(sanitizedValue);
       } else if (name === 'password') {
-        error = validatePassword(value);
+        error = validateLoginPassword(value);
       }
       
       setValidationErrors({
@@ -118,6 +135,14 @@ const Login = () => {
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
+
+  const handleUseEmailSuggestion = () => {
+    if (emailSuggestion) {
+      setFormData({ ...formData, email: emailSuggestion });
+      setEmailSuggestion(null);
+      setValidationErrors({ ...validationErrors, email: null });
+    }
+  };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -135,7 +160,7 @@ const Login = () => {
     
     try {
       if (login) {
-        await login(formData.email, formData.password);
+        await login(formData.email.trim(), formData.password);
         navigate('/');
       } else {
         setLocalError(AUTH_MESSAGES.LOGIN_ERROR_NO_FUNCTION);
@@ -199,6 +224,27 @@ const Login = () => {
     return null;
   };
 
+  const renderEmailSuggestion = () => {
+    if (emailSuggestion && touched.email && !validationErrors.email) {
+      return (
+        <Form.Text className="text-info d-flex align-items-center mt-1">
+          <InfoCircleFill className="me-1" size={12} />
+          ¿Quisiste decir{' '}
+          <Button 
+            variant="link" 
+            size="sm" 
+            className="p-0 ms-1 text-decoration-underline"
+            onClick={handleUseEmailSuggestion}
+          >
+            {emailSuggestion}
+          </Button>
+          ?
+        </Form.Text>
+      );
+    }
+    return null;
+  };
+
   const getInputClassName = (fieldName) => {
     const baseClass = "bg-light border-start-0";
     if (!touched[fieldName]) return baseClass;
@@ -221,6 +267,8 @@ const Login = () => {
         required
         isInvalid={touched[field.name] && !!validationErrors[field.name]}
         isValid={touched[field.name] && !validationErrors[field.name] && !!formData[field.name]}
+        autoComplete={field.name === 'email' ? 'email' : 'current-password'}
+        maxLength={field.name === 'email' ? 100 : 50}
       />
       {showToggle && (
         <InputGroup.Text 
@@ -240,6 +288,7 @@ const Login = () => {
       {renderInputField(FORM_FIELDS.email)}
       {renderFieldError('email')}
       {renderFieldSuccess('email')}
+      {renderEmailSuggestion()}
     </Form.Group>
   );
 

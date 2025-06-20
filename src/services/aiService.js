@@ -32,3 +32,14 @@ export const improveAllArtifactsWithAI = async (hypothesisId, phase) => {
     throw error;
   }
 };
+
+// Generar opciones de hipótesis desde un problema
+export const generateHypothesisOptions = async (problem) => {
+  try {
+    const response = await api.post('/hypotheses/generate-from-problem', { problem });
+    return response.data;
+  } catch (error) {
+    console.error('Error generating hypothesis options:', error);
+    throw error;
+  }
+};

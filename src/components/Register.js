@@ -1,3 +1,4 @@
+// src/components/Register.js
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Card, Alert, Row, Col, Container, InputGroup, ProgressBar } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
@@ -12,7 +13,8 @@ import {
   EyeSlashFill,
   Lightbulb,
   CheckCircleFill,
-  XCircleFill
+  XCircleFill,
+  InfoCircleFill
 } from 'react-bootstrap-icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -45,14 +47,42 @@ const Register = () => {
     return () => clearError && clearError();
   }, [clearError]);
 
-  // Validaciones individuales
+  // Validaciones individuales mejoradas
   const validateName = (name) => {
     if (!name || name.trim().length === 0) {
       return 'El nombre es requerido';
     }
+    
+    // Verificar longitud
     if (name.trim().length < 2) {
       return 'El nombre debe tener al menos 2 caracteres';
     }
+    if (name.trim().length > 50) {
+      return 'El nombre no puede exceder 50 caracteres';
+    }
+    
+    // Verificar caracteres permitidos (solo letras, espacios, guiones y apóstrofes)
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$/;
+    if (!nameRegex.test(name)) {
+      return 'El nombre solo puede contener letras, espacios, guiones y apóstrofes. No se permiten números ni caracteres especiales como ()&%@#';
+    }
+    
+    // Verificar espacios múltiples
+    if (/\s{2,}/.test(name)) {
+      return 'El nombre no puede contener espacios múltiples';
+    }
+    
+    // Verificar que tenga al menos 2 letras
+    const letterCount = (name.match(/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g) || []).length;
+    if (letterCount < 2) {
+      return 'El nombre debe contener al menos 2 letras';
+    }
+    
+    // Verificar que no sea solo caracteres especiales
+    if (/^[\s\-']+$/.test(name)) {
+      return 'El nombre no puede consistir solo de espacios o caracteres especiales';
+    }
+    
     return null;
   };
 
@@ -60,10 +90,45 @@ const Register = () => {
     if (!email) {
       return 'El correo electrónico es requerido';
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    
+    // Verificar formato básico de email
+    const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!basicEmailRegex.test(email)) {
       return 'Por favor ingrese un correo electrónico válido';
     }
+    
+    // Verificar caracteres permitidos más estrictamente
+    const strictEmailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!strictEmailRegex.test(email)) {
+      return 'El correo contiene caracteres no permitidos';
+    }
+    
+    // Verificar que no tenga paréntesis, ampersands u otros caracteres peligrosos
+    const dangerousChars = /[()<>&\[\]\\,;:\s"]/;
+    const localPart = email.split('@')[0];
+    if (dangerousChars.test(localPart)) {
+      return 'El correo no puede contener paréntesis, &, <, > u otros caracteres especiales';
+    }
+    
+    // Verificar longitud
+    if (email.length > 100) {
+      return 'El correo no puede exceder 100 caracteres';
+    }
+    
+    // Verificar dominios comunes con typos
+    const domain = email.split('@')[1];
+    const commonTypos = {
+      'gmial.com': 'gmail.com',
+      'gmai.com': 'gmail.com',
+      'yahooo.com': 'yahoo.com',
+      'hotmial.com': 'hotmail.com',
+      'outlok.com': 'outlook.com'
+    };
+    
+    if (commonTypos[domain]) {
+      return `¿Quisiste decir ${email.split('@')[0]}@${commonTypos[domain]}?`;
+    }
+    
     return null;
   };
 
@@ -71,9 +136,45 @@ const Register = () => {
     if (!password) {
       return 'La contraseña es requerida';
     }
-    if (password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres';
+    
+    if (password.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres';
     }
+    
+    if (password.length > 50) {
+      return 'La contraseña no puede exceder 50 caracteres';
+    }
+    
+    // Verificar que no tenga espacios
+    if (/\s/.test(password)) {
+      return 'La contraseña no puede contener espacios';
+    }
+    
+    // Verificar complejidad
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*]/.test(password);
+    
+    if (!hasLowercase) {
+      return 'La contraseña debe contener al menos una letra minúscula';
+    }
+    if (!hasUppercase) {
+      return 'La contraseña debe contener al menos una letra mayúscula';
+    }
+    if (!hasNumber) {
+      return 'La contraseña debe contener al menos un número';
+    }
+    if (!hasSpecial) {
+      return 'La contraseña debe contener al menos un carácter especial (!@#$%^&*)';
+    }
+    
+    // Verificar contraseñas comunes
+    const commonPasswords = ['password', '12345678', 'qwerty', 'abc123', 'password123', 'admin123'];
+    if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
+      return 'La contraseña es muy común, por favor use una más segura';
+    }
+    
     return null;
   };
 
@@ -131,11 +232,25 @@ const Register = () => {
     });
   };
 
+  const sanitizeInput = (value, fieldName) => {
+    if (fieldName === 'name') {
+      // Remover caracteres no permitidos para el nombre
+      return value
+        .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']/g, '') // Solo permitir letras, espacios, guiones y apóstrofes
+        .replace(/\s+/g, ' '); // Reemplazar múltiples espacios por uno solo
+    }
+    return value;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Sanitizar el valor antes de guardarlo (solo para nombre)
+    const sanitizedValue = name === 'name' ? sanitizeInput(value, name) : value;
+    
     setFormData({
       ...formData,
-      [name]: value
+      [name]: sanitizedValue
     });
     
     // Calcular la fortaleza de la contraseña
@@ -148,7 +263,7 @@ const Register = () => {
       let error = null;
       switch (name) {
         case 'name':
-          error = validateName(value);
+          error = validateName(sanitizedValue);
           break;
         case 'email':
           error = validateEmail(value);
@@ -185,25 +300,26 @@ const Register = () => {
 
   const calculatePasswordStrength = (password) => {
     let strength = 0;
-    if (password.length >= 6) strength += 20;
     if (password.length >= 8) strength += 20;
-    if (/[A-Z]/.test(password)) strength += 20;
-    if (/[a-z]/.test(password)) strength += 20;
-    if (/\d/.test(password)) strength += 20;
-    setPasswordStrength(strength);
+    if (password.length >= 12) strength += 20;
+    if (/[a-z]/.test(password)) strength += 15;
+    if (/[A-Z]/.test(password)) strength += 15;
+    if (/\d/.test(password)) strength += 15;
+    if (/[!@#$%^&*]/.test(password)) strength += 15;
+    setPasswordStrength(Math.min(strength, 100));
   };
 
   const getPasswordStrengthLabel = () => {
     if (passwordStrength === 0) return '';
     if (passwordStrength <= 40) return 'Débil';
-    if (passwordStrength <= 80) return 'Media';
+    if (passwordStrength <= 70) return 'Media';
     return 'Fuerte';
   };
 
   const getPasswordStrengthColor = () => {
     if (passwordStrength === 0) return '';
     if (passwordStrength <= 40) return 'danger';
-    if (passwordStrength <= 80) return 'warning';
+    if (passwordStrength <= 70) return 'warning';
     return 'success';
   };
 
@@ -227,7 +343,7 @@ const Register = () => {
     
     try {
       if (register) {
-        await register(formData.name, formData.email, formData.password);
+        await register(formData.name.trim(), formData.email.trim(), formData.password);
         setSuccess(true);
         setTimeout(() => {
           navigate('/');
@@ -236,8 +352,22 @@ const Register = () => {
         setLocalError('Error: Función de registro no disponible');
       }
     } catch (err) {
-      if (err.response?.status === 400 && err.response?.data?.message?.includes('existe')) {
-        setLocalError('Ya existe una cuenta con este correo electrónico');
+      if (err.response?.status === 400) {
+        const message = err.response?.data?.message || '';
+        if (message.includes('existe')) {
+          setLocalError('Ya existe una cuenta con este correo electrónico');
+        } else if (message.includes('validation')) {
+          // Extraer errores de validación del backend
+          const errors = err.response?.data?.errors;
+          if (errors && Array.isArray(errors)) {
+            const errorMessages = errors.map(e => e.msg).join('. ');
+            setLocalError(errorMessages);
+          } else {
+            setLocalError('Error de validación. Por favor revise los datos ingresados.');
+          }
+        } else {
+          setLocalError(message || 'Error al registrar usuario');
+        }
       } else {
         setLocalError(err.response?.data?.message || 'Error al registrar usuario');
       }
@@ -254,9 +384,9 @@ const Register = () => {
   const renderFieldError = (fieldName) => {
     if (touched[fieldName] && validationErrors[fieldName]) {
       return (
-        <Form.Text className="text-danger d-flex align-items-center mt-1">
-          <XCircleFill className="me-1" size={12} />
-          {validationErrors[fieldName]}
+        <Form.Text className="text-danger d-flex align-items-start mt-1">
+          <XCircleFill className="me-1 mt-1 flex-shrink-0" size={12} />
+          <span>{validationErrors[fieldName]}</span>
         </Form.Text>
       );
     }
@@ -275,25 +405,24 @@ const Register = () => {
     return null;
   };
 
+  const renderFieldInfo = (fieldName) => {
+    if (!touched[fieldName] && fieldName === 'name') {
+      return (
+        <Form.Text className="text-muted d-flex align-items-start mt-1">
+          <InfoCircleFill className="me-1 mt-1 flex-shrink-0" size={12} />
+          <span>Solo se permiten letras, espacios, guiones y apóstrofes</span>
+        </Form.Text>
+      );
+    }
+    return null;
+  };
+
   const getInputClassName = (fieldName) => {
     const baseClass = "bg-light border-start-0";
     if (!touched[fieldName]) return baseClass;
     if (validationErrors[fieldName]) return `${baseClass} is-invalid`;
     if (formData[fieldName]) return `${baseClass} is-valid`;
     return baseClass;
-  };
-
-  // Verificar si el formulario es válido para el botón
-  const isFormValid = () => {
-    return formData.name && 
-           formData.email && 
-           formData.password && 
-           formData.confirmPassword && 
-           acceptTerms &&
-           !validationErrors.name &&
-           !validationErrors.email &&
-           !validationErrors.password &&
-           !validationErrors.confirmPassword;
   };
 
   return (
@@ -320,8 +449,8 @@ const Register = () => {
               ) : (
                 <>
                   {displayError && (
-                    <Alert variant="danger" className="d-flex align-items-center mb-4 border-0">
-                      <ExclamationTriangle className="me-2 flex-shrink-0" size={20} />
+                    <Alert variant="danger" className="d-flex align-items-start mb-4 border-0">
+                      <ExclamationTriangle className="me-2 flex-shrink-0 mt-1" size={20} />
                       <div>{displayError}</div>
                     </Alert>
                   )}
@@ -343,10 +472,12 @@ const Register = () => {
                           required
                           isInvalid={touched.name && !!validationErrors.name}
                           isValid={touched.name && !validationErrors.name && !!formData.name}
+                          maxLength={50}
                         />
                       </InputGroup>
                       {renderFieldError('name')}
                       {renderFieldSuccess('name')}
+                      {renderFieldInfo('name')}
                     </Form.Group>
 
                     <Form.Group className="mb-4">
@@ -366,11 +497,12 @@ const Register = () => {
                           required
                           isInvalid={touched.email && !!validationErrors.email}
                           isValid={touched.email && !validationErrors.email && !!formData.email}
+                          maxLength={100}
                         />
                       </InputGroup>
                       {renderFieldError('email')}
                       {renderFieldSuccess('email')}
-                      {!validationErrors.email && touched.email && (
+                      {!validationErrors.email && touched.email && formData.email && (
                         <Form.Text className="text-muted">
                           No compartiremos su correo con nadie más.
                         </Form.Text>
@@ -389,11 +521,12 @@ const Register = () => {
                           value={formData.password}
                           onChange={handleChange}
                           onBlur={() => handleBlur('password')}
-                          placeholder="Mínimo 6 caracteres"
+                          placeholder="Mínimo 8 caracteres"
                           className={getInputClassName('password') + ' border-end-0'}
                           required
                           isInvalid={touched.password && !!validationErrors.password}
                           isValid={touched.password && !validationErrors.password && !!formData.password}
+                          maxLength={50}
                         />
                         <InputGroup.Text 
                           className="bg-light border-start-0 cursor-pointer"
@@ -422,6 +555,9 @@ const Register = () => {
                             variant={getPasswordStrengthColor()} 
                             style={{ height: '6px' }}
                           />
+                          <Form.Text className="text-muted d-block mt-1">
+                            Debe incluir: mayúsculas, minúsculas, números y caracteres especiales (!@#$%^&*)
+                          </Form.Text>
                         </div>
                       )}
                     </Form.Group>
@@ -443,6 +579,7 @@ const Register = () => {
                           required
                           isInvalid={touched.confirmPassword && !!validationErrors.confirmPassword}
                           isValid={touched.confirmPassword && !validationErrors.confirmPassword && !!formData.confirmPassword}
+                          maxLength={50}
                         />
                         <InputGroup.Text 
                           className="bg-light border-start-0 cursor-pointer"

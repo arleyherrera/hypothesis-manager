@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, Row, Col, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { fetchHypotheses } from '../services/hypothesisService';
 import { formatDate } from '../utils/dateFormat';
+import { useDebounce } from '../hooks/useDebounce';
 import { 
   Lightbulb, 
   Calendar3, 
@@ -14,6 +15,70 @@ import {
   CheckCircle 
 } from 'react-bootstrap-icons';
 
+// Componente memorizado para cada tarjeta
+const HypothesisCard = React.memo(({ hypothesis }) => {
+  const TEXT_TRUNCATE_LIMITS = {
+    PROBLEM: 150,
+    SEGMENT: 80
+  };
+
+  const truncateText = useCallback((text, limit) => {
+    if (!text) return 'No disponible';
+    return text.length > limit ? text.substring(0, limit) + '...' : text;
+  }, []);
+
+  const hasArtifacts = useMemo(() => 
+    hypothesis.artifacts && hypothesis.artifacts.length > 0, 
+    [hypothesis.artifacts]
+  );
+
+  return (
+    <Col>
+      <Card className="h-100 hypothesis-card">
+        <Card.Body>
+          <div className="d-flex justify-content-between mb-2">
+            <Badge bg={hasArtifacts ? "success" : "secondary"} className="px-3 py-2">
+              {hasArtifacts ? 'Con artefactos' : 'Sin artefactos'}
+            </Badge>
+            <small className="text-muted d-flex align-items-center">
+              <Calendar3 className="me-1" size={14} />
+              {formatDate(hypothesis.createdAt)}
+            </small>
+          </div>
+          
+          <div className="problem-section mb-3 p-3 bg-light rounded">
+            <h6 className="text-primary mb-2 d-flex align-items-center">
+              <PatchQuestion className="me-2" size={18} />
+              Problema Identificado
+            </h6>
+            <p className="mb-0 text-dark">
+              {truncateText(hypothesis.problem, TEXT_TRUNCATE_LIMITS.PROBLEM)}
+            </p>
+          </div>
+          
+          <h5 className="card-title text-secondary mb-2">
+            {hypothesis.name}
+          </h5>
+          
+          <p className="text-muted small mb-0">
+            <strong>Segmento:</strong> {truncateText(hypothesis.customerSegment, TEXT_TRUNCATE_LIMITS.SEGMENT)}
+          </p>
+        </Card.Body>
+        <Card.Footer className="bg-white">
+          <Link to={`/hypothesis/${hypothesis.id}`} className="w-100">
+            <Button variant="outline-primary" className="w-100 d-flex justify-content-center align-items-center">
+              Ver Detalles
+              <ArrowRightCircle className="ms-2" size={16} />
+            </Button>
+          </Link>
+        </Card.Footer>
+      </Card>
+    </Col>
+  );
+});
+
+HypothesisCard.displayName = 'HypothesisCard';
+
 const HypothesisList = () => {
   const [hypotheses, setHypotheses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,13 +86,12 @@ const HypothesisList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const location = useLocation();
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+  
+  // Usar debounce para la búsqueda
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const TEXT_TRUNCATE_LIMITS = {
-    PROBLEM: 150,
-    SEGMENT: 80
-  };
-
-  const loadHypotheses = async () => {
+  // Usar useCallback para evitar recrear la función
+  const loadHypotheses = useCallback(async () => {
     try {
       const data = await fetchHypotheses();
       setHypotheses(Array.isArray(data) ? data : []);
@@ -39,39 +103,39 @@ const HypothesisList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadHypotheses();
-  }, []);
+  }, [loadHypotheses]);
 
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage('');
-        // Limpiar el state de la navegación
         window.history.replaceState({}, document.title);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
 
-  const filterHypotheses = () => {
-    const searchLower = (searchTerm || '').toLowerCase();
+  // Memorizar el filtrado para evitar recálculos
+  const filteredHypotheses = useMemo(() => {
+    if (!debouncedSearchTerm) return hypotheses;
+    
+    const searchLower = debouncedSearchTerm.toLowerCase();
     return hypotheses.filter(hypothesis => {
       if (!hypothesis) return false;
       const nameMatch = hypothesis.name && hypothesis.name.toLowerCase().includes(searchLower);
       const problemMatch = hypothesis.problem && hypothesis.problem.toLowerCase().includes(searchLower);
       return nameMatch || problemMatch;
     });
-  };
+  }, [hypotheses, debouncedSearchTerm]);
 
-  const truncateText = (text, limit) => {
-    if (!text) return 'No disponible';
-    return text.length > limit ? text.substring(0, limit) + '...' : text;
-  };
-
-  const hasArtifacts = (hypothesis) => hypothesis.artifacts && hypothesis.artifacts.length > 0;
+  // Manejar cambio de búsqueda con debounce
+  const handleSearchChange = useCallback((e) => {
+    setSearchTerm(e.target.value);
+  }, []);
 
   const renderSuccessMessage = () => successMessage && (
     <Alert variant="success" dismissible onClose={() => setSuccessMessage('')} className="mb-4">
@@ -134,7 +198,7 @@ const HypothesisList = () => {
           className="form-control border-start-0"
           placeholder="Buscar por problema o nombre..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
         />
       </div>
     </div>
@@ -160,53 +224,6 @@ const HypothesisList = () => {
     </Card>
   );
 
-  const renderHypothesisCard = (hypothesis) => (
-    <Col key={hypothesis.id}>
-      <Card className="h-100 hypothesis-card">
-        <Card.Body>
-          <div className="d-flex justify-content-between mb-2">
-            <Badge bg={hasArtifacts(hypothesis) ? "success" : "secondary"} className="px-3 py-2">
-              {hasArtifacts(hypothesis) ? 'Con artefactos' : 'Sin artefactos'}
-            </Badge>
-            <small className="text-muted d-flex align-items-center">
-              <Calendar3 className="me-1" size={14} />
-              {formatDate(hypothesis.createdAt)}
-            </small>
-          </div>
-          
-          {/* PROBLEMA PRIMERO con diseño destacado */}
-          <div className="problem-section mb-3 p-3 bg-light rounded">
-            <h6 className="text-primary mb-2 d-flex align-items-center">
-              <PatchQuestion className="me-2" size={18} />
-              Problema Identificado
-            </h6>
-            <p className="mb-0 text-dark">
-              {truncateText(hypothesis.problem, TEXT_TRUNCATE_LIMITS.PROBLEM)}
-            </p>
-          </div>
-          
-          {/* Nombre como subtítulo */}
-          <h5 className="card-title text-secondary mb-2">
-            {hypothesis.name}
-          </h5>
-          
-          {/* Segmento más pequeño */}
-          <p className="text-muted small mb-0">
-            <strong>Segmento:</strong> {truncateText(hypothesis.customerSegment, TEXT_TRUNCATE_LIMITS.SEGMENT)}
-          </p>
-        </Card.Body>
-        <Card.Footer className="bg-white">
-          <Link to={`/hypothesis/${hypothesis.id}`} className="w-100">
-            <Button variant="outline-primary" className="w-100 d-flex justify-content-center align-items-center">
-              Ver Detalles
-              <ArrowRightCircle className="ms-2" size={16} />
-            </Button>
-          </Link>
-        </Card.Footer>
-      </Card>
-    </Col>
-  );
-
   const renderNoResults = () => (
     <Col xs={12}>
       <Alert variant="info">
@@ -216,15 +233,16 @@ const HypothesisList = () => {
     </Col>
   );
 
-  const renderHypothesesGrid = () => {
-    const filtered = filterHypotheses();
-    
-    return (
-      <Row className="row-cols-1 row-cols-md-2 g-4 mb-4">
-        {filtered.length > 0 ? filtered.map(renderHypothesisCard) : renderNoResults()}
-      </Row>
-    );
-  };
+  const renderHypothesesGrid = () => (
+    <Row className="row-cols-1 row-cols-md-2 g-4 mb-4">
+      {filteredHypotheses.length > 0 
+        ? filteredHypotheses.map(hypothesis => (
+            <HypothesisCard key={hypothesis.id} hypothesis={hypothesis} />
+          ))
+        : renderNoResults()
+      }
+    </Row>
+  );
 
   const renderContent = () => (
     <div className="fade-in">

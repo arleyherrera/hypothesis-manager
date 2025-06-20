@@ -1,8 +1,10 @@
+// src/components/Navigation.js
 import React from 'react';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Lightbulb, FileText, BoxArrowRight, Person } from 'react-bootstrap-icons';
 import { getCurrentUser, logout } from '../services/authService';
+import ThemeToggle from './ThemeToggle';
 
 const Navigation = () => {
   const location = useLocation();
@@ -45,7 +47,8 @@ const Navigation = () => {
           Mis Hipótesis
         </Nav.Link>
       </Nav>
-      <Nav>
+      <Nav className="d-flex align-items-center">
+        <ThemeToggle variant="icon" className="me-3" />
         <div className="d-flex align-items-center text-white me-3">
           <Person className="me-1" size={18} />
           {currentUser.name}
@@ -63,14 +66,17 @@ const Navigation = () => {
   );
 
   const renderUnauthenticatedNav = () => (
-    <Nav className="ms-auto">
-      <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.LOGIN} className="text-white">
-        Iniciar Sesión
-      </Nav.Link>
-      <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.REGISTER} className="text-white">
-        Registrarse
-      </Nav.Link>
-    </Nav>
+    <>
+      <Nav className="ms-auto">
+        <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.LOGIN} className="text-white">
+          Iniciar Sesión
+        </Nav.Link>
+        <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.REGISTER} className="text-white">
+          Registrarse
+        </Nav.Link>
+      </Nav>
+      <ThemeToggle variant="icon" className="ms-3" />
+    </>
   );
 
   const renderNavContent = () => currentUser ? renderAuthenticatedNav() : renderUnauthenticatedNav();
