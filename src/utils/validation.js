@@ -8,6 +8,7 @@ export const REGEX = {
   NAME: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$/,
   // Email estricto
   EMAIL: /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
+   EMAIL_FORBIDDEN: /[()<>&\[\]\\,;:\s"'`!#$%^*+={}|~?]/,
   // Caracteres peligrosos en email
   EMAIL_DANGEROUS: /[()<>&\[\]\\,;:\s"]/,
   // Múltiples espacios
@@ -80,22 +81,53 @@ export const validators = {
   /**
    * Valida el email
    */
-  email: (value) => {
+ email: (value) => {
     if (!value) {
       return 'El correo electrónico es requerido';
     }
     
-    if (!REGEX.EMAIL.test(value)) {
-      return 'Por favor ingrese un correo electrónico válido';
+    const trimmed = value.trim();
+    
+    // Verificar formato básico
+    if (!REGEX.EMAIL.test(trimmed)) {
+      return 'Formato inválido. Use solo letras, números, puntos (.), guiones (-) y guiones bajos (_)';
     }
     
-    const localPart = value.split('@')[0];
-    if (REGEX.EMAIL_DANGEROUS.test(localPart)) {
-      return 'El correo no puede contener paréntesis, &, <, > u otros caracteres especiales';
+    const [localPart, domainPart] = trimmed.split('@');
+    
+    // Verificar caracteres prohibidos
+    if (REGEX.EMAIL_FORBIDDEN.test(localPart)) {
+      const forbiddenChar = localPart.match(REGEX.EMAIL_FORBIDDEN)?.[0];
+      return `El correo no puede contener "${forbiddenChar}"`;
     }
     
-    if (value.length > LIMITS.EMAIL_MAX) {
+    // Verificar puntos al inicio o final
+    if (localPart.startsWith('.') || localPart.endsWith('.')) {
+      return 'El correo no puede empezar o terminar con punto';
+    }
+    
+    // Verificar guiones al inicio o final
+    if (localPart.startsWith('-') || localPart.endsWith('-')) {
+      return 'El correo no puede empezar o terminar con guión';
+    }
+    
+    // Verificar puntos consecutivos
+    if (localPart.includes('..')) {
+      return 'El correo no puede contener puntos consecutivos';
+    }
+    
+    // Verificar longitud
+    if (trimmed.length > LIMITS.EMAIL_MAX) {
       return `El correo no puede exceder ${LIMITS.EMAIL_MAX} caracteres`;
+    }
+    
+    if (localPart.length > 64) {
+      return 'La parte antes del @ no puede exceder 64 caracteres';
+    }
+    
+    // Verificar dominio válido
+    if (!domainPart || domainPart.length < 3 || !domainPart.includes('.')) {
+      return 'El dominio del correo no es válido';
     }
     
     return null;

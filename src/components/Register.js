@@ -87,50 +87,72 @@ const Register = () => {
   };
 
   const validateEmail = (email) => {
-    if (!email) {
-      return 'El correo electrónico es requerido';
+  if (!email) {
+    return 'El correo electrónico es requerido';
+  }
+  
+  // Formato estricto - solo caracteres permitidos
+  const strictEmailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!strictEmailRegex.test(email)) {
+    return 'Formato inválido. Use solo letras, números, puntos (.), guiones (-) y guiones bajos (_)';
+  }
+  
+  const localPart = email.split('@')[0];
+  const domainPart = email.split('@')[1];
+  
+  // Verificar caracteres prohibidos explícitamente
+  const forbiddenChars = ['(', ')', '<', '>', '&', '[', ']', '\\', ',', ';', ':', ' ', '"', "'", '`', '!', '#', '$', '%', '^', '*', '+', '=', '{', '}', '|', '~', '?'];
+  for (const char of forbiddenChars) {
+    if (localPart.includes(char)) {
+      return `El correo no puede contener el carácter "${char}"`;
     }
-    
-    // Verificar formato básico de email
-    const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!basicEmailRegex.test(email)) {
-      return 'Por favor ingrese un correo electrónico válido';
-    }
-    
-    // Verificar caracteres permitidos más estrictamente
-    const strictEmailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!strictEmailRegex.test(email)) {
-      return 'El correo contiene caracteres no permitidos';
-    }
-    
-    // Verificar que no tenga paréntesis, ampersands u otros caracteres peligrosos
-    const dangerousChars = /[()<>&\[\]\\,;:\s"]/;
-    const localPart = email.split('@')[0];
-    if (dangerousChars.test(localPart)) {
-      return 'El correo no puede contener paréntesis, &, <, > u otros caracteres especiales';
-    }
-    
-    // Verificar longitud
-    if (email.length > 100) {
-      return 'El correo no puede exceder 100 caracteres';
-    }
-    
-    // Verificar dominios comunes con typos
-    const domain = email.split('@')[1];
-    const commonTypos = {
-      'gmial.com': 'gmail.com',
-      'gmai.com': 'gmail.com',
-      'yahooo.com': 'yahoo.com',
-      'hotmial.com': 'hotmail.com',
-      'outlok.com': 'outlook.com'
-    };
-    
-    if (commonTypos[domain]) {
-      return `¿Quisiste decir ${email.split('@')[0]}@${commonTypos[domain]}?`;
-    }
-    
-    return null;
+  }
+  
+  // Verificar inicio y fin
+  if (/^[._-]|[._-]$/.test(localPart)) {
+    return 'El correo no puede empezar o terminar con punto, guión o guión bajo';
+  }
+  
+  // Verificar puntos consecutivos
+  if (localPart.includes('..')) {
+    return 'El correo no puede contener puntos consecutivos';
+  }
+  
+  // Verificar longitudes
+  if (email.length > 100) {
+    return 'El correo no puede exceder 100 caracteres';
+  }
+  
+  if (localPart.length > 64) {
+    return 'La parte antes del @ no puede exceder 64 caracteres';
+  }
+  
+  // Verificar dominio
+  if (!domainPart || domainPart.length < 3) {
+    return 'El dominio del correo no es válido';
+  }
+  
+  // Verificar dominios temporales
+  const tempDomains = ['tempmail.com', 'throwaway.email', '10minutemail.com'];
+  if (tempDomains.includes(domainPart.toLowerCase())) {
+    return 'No se permiten correos temporales';
+  }
+  
+  // Sugerir corrección para typos comunes
+  const commonTypos = {
+    'gmial.com': 'gmail.com',
+    'gmai.com': 'gmail.com',
+    'yahooo.com': 'yahoo.com',
+    'hotmial.com': 'hotmail.com',
+    'outlok.com': 'outlook.com'
   };
+  
+  if (commonTypos[domainPart]) {
+    return `¿Quisiste decir ${localPart}@${commonTypos[domainPart]}?`;
+  }
+  
+  return null;
+};
 
   const validatePassword = (password) => {
     if (!password) {
