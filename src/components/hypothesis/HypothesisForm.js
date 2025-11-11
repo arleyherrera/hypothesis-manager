@@ -15,8 +15,8 @@ import {
   Magic,
   Check2Circle
 } from 'react-bootstrap-icons';
-import { saveHypothesis } from '../services/hypothesisService';
-import { generateHypothesisOptions } from '../services/aiService';
+import { saveHypothesis } from '../../services/hypothesisService';
+import { generateHypothesisOptions } from '../../services/aiService';
 
 const HypothesisForm = () => {
   const navigate = useNavigate();
@@ -170,7 +170,7 @@ const HypothesisForm = () => {
     try {
       await saveHypothesis(formData);
       setSuccess(true);
-      setTimeout(() => navigate('/dashboard'), SUCCESS_REDIRECT_DELAY);
+      setTimeout(() => navigate('/'), SUCCESS_REDIRECT_DELAY);
     } catch (err) {
       setError('Error al guardar la hipótesis. Por favor, inténtelo de nuevo.');
       console.error(err);
@@ -185,7 +185,7 @@ const HypothesisForm = () => {
         <PencilSquare className="me-2 text-primary" size={28} />
         Nueva Hipótesis
       </h2>
-      <Link to="/dashboard">
+      <Link to="/">
         <Button variant="outline-secondary" className="d-flex align-items-center">
           <ArrowLeft className="me-2" size={16} />
           Volver

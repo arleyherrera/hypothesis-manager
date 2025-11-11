@@ -16,7 +16,7 @@ import {
   XCircleFill,
   InfoCircleFill
 } from 'react-bootstrap-icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({

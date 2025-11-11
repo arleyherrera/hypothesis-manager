@@ -14,8 +14,8 @@ import {
   XCircleFill,
   InfoCircleFill
 } from 'react-bootstrap-icons';
-import { useAuth } from '../context/AuthContext';
-import { validators, sanitizers, detectEmailTypo } from '../utils/validation';
+import { useAuth } from '../../context/AuthContext';
+import { validators, sanitizers, detectEmailTypo } from '../../utils/validation';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -189,7 +189,7 @@ const Login = () => {
         <Lightbulb className="text-white" size={32} />
       </div>
       <h2 className="auth-title mt-3">¡Bienvenido de nuevo!</h2>
-      <p className="auth-subtitle text-muted">Inicia sesión para continuar con Hypothesis Manager</p>
+      <p className="auth-subtitle text-muted">Inicia sesión para continuar con Lean Startup Assistant</p>
     </div>
   );
 
@@ -339,6 +339,11 @@ const Login = () => {
       <p className="mb-0 text-muted">
         ¿No tienes una cuenta?{' '}
         <Link to="/register" className="text-decoration-none fw-semibold">Crear cuenta</Link>
+      </p>
+      <p className="mb-0 text-muted mt-2">
+        <Link to="/forgot-password" className="text-decoration-none">
+          ¿Olvidaste tu contraseña?
+        </Link>
       </p>
     </div>
   );

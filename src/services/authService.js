@@ -3,7 +3,9 @@ import api from './api';
 
 const AUTH_ENDPOINTS = {
   REGISTER: '/auth/register',
-  LOGIN: '/auth/login'
+  LOGIN: '/auth/login',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  RESET_PASSWORD: '/auth/reset-password'
 };
 
 const USER_STORAGE_KEY = 'user';
@@ -76,4 +78,50 @@ export const getCurrentUser = () => {
 export const isAuthenticated = () => {
   const user = getCurrentUser();
   return Boolean(user?.token);
+};
+
+/**
+ * Solicita un enlace de reseteo de contraseña
+ * @param {string} email - Email del usuario
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+export const forgotPassword = async (email) => {
+  try {
+    console.log('📤 Solicitando reseteo de contraseña para:', email);
+
+    const response = await api.post(AUTH_ENDPOINTS.FORGOT_PASSWORD, { email });
+    console.log('✅ Solicitud de reseteo exitosa:', response.data);
+
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al solicitar reseteo de contraseña:');
+    console.error('Status:', error.response?.status);
+    console.error('Mensaje:', error.response?.data?.message);
+
+    throw error;
+  }
+};
+
+/**
+ * Restablece la contraseña usando el token
+ * @param {string} token - Token de reseteo
+ * @param {string} password - Nueva contraseña
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+export const resetPassword = async (token, password) => {
+  try {
+    console.log('📤 Restableciendo contraseña con token');
+
+    const response = await api.post(`${AUTH_ENDPOINTS.RESET_PASSWORD}/${token}`, { password });
+    console.log('✅ Contraseña restablecida exitosamente:', response.data);
+
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error al restablecer contraseña:');
+    console.error('Status:', error.response?.status);
+    console.error('Mensaje:', error.response?.data?.message);
+    console.error('Errores:', error.response?.data?.errors);
+
+    throw error;
+  }
 };

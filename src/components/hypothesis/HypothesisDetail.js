@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, Row, Col, Button, Spinner, Alert, Badge, Modal } from 'react-bootstrap';
-import { fetchHypothesisById, deleteHypothesis } from '../services/hypothesisService';
-import { formatDate } from '../utils/dateFormat';
+import { fetchHypothesisById, deleteHypothesis } from '../../services/hypothesisService';
+import { formatDate } from '../../utils/dateFormat';
 import { useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -80,7 +80,7 @@ const HypothesisDetail = () => {
       // Mostrar mensaje de éxito brevemente antes de redirigir
       setShowDeleteModal(false);
       setTimeout(() => {
-        navigate('/dashboard', { state: { message: 'Hipótesis eliminada exitosamente' } });
+        navigate('/', { state: { message: 'Hipótesis eliminada exitosamente' } });
       }, 500);
     } catch (err) {
       console.error('Error al eliminar hipótesis:', err);
@@ -108,7 +108,7 @@ const HypothesisDetail = () => {
         <p>{error}</p>
         <div className="mt-3">
           <Button onClick={() => window.location.reload()} variant="outline-danger">Reintentar</Button>
-          <Link to="/dashboard"><Button variant="outline-secondary" className="ms-2">Volver a la lista</Button></Link>
+          <Link to="/"><Button variant="outline-secondary" className="ms-2">Volver a la lista</Button></Link>
         </div>
       </div>
     </Alert>
@@ -118,7 +118,7 @@ const HypothesisDetail = () => {
     <Alert variant="warning" className="fade-in">
       No se encontró la hipótesis solicitada.
       <div className="mt-3">
-        <Link to="/dashboard"><Button variant="outline-primary">Volver a la lista</Button></Link>
+        <Link to="/"><Button variant="outline-primary">Volver a la lista</Button></Link>
       </div>
     </Alert>
   );
@@ -138,7 +138,7 @@ const HypothesisDetail = () => {
           <Trash3Fill className="me-2" size={16} />
           Eliminar
         </Button>
-        <Link to="/dashboard">
+        <Link to="/">
           <Button variant="outline-secondary" className="d-flex align-items-center">
             <ArrowLeft className="me-2" size={16} />
             Volver a la lista

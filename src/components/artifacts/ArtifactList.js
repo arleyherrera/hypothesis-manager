@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Modal, Spinner, Alert, Row, Col, Badge, Form, Table, ButtonGroup } from 'react-bootstrap';
-import MarkdownViewer from './MarkdownViewer'; // Importar el nuevo componente
-import ArtifactPreviewCard from './ArtifactPreviewCard';
-import { generateArtifacts } from '../services/artifactService';
-import { generateArtifactWithAI, improveAllArtifactsWithAI } from '../services/aiService';
-import { fetchHypothesisById } from '../services/hypothesisService';
-import { useArtifactPreview } from '../hooks/useArtifactPreview';
+import MarkdownViewer from '../common/MarkdownViewer';
+import { generateArtifacts } from '../../services/artifactService';
+import { generateArtifactWithAI, improveAllArtifactsWithAI } from '../../services/aiService';
+import { fetchHypothesisById } from '../../services/hypothesisService';
 import { 
   FileEarmarkText, 
   PlusCircle, 
@@ -38,9 +36,6 @@ const ArtifactList = ({ artifacts, phase, hypothesisId }) => {
   const [viewMode, setViewMode] = useState('formatted');
   const [isImprovingAll, setIsImprovingAll] = useState(false);
   const [allImproved, setAllImproved] = useState(false);
-
-  // Hook para la vista previa de artefactos
-  const { previewData, isVisible, position, showPreview, hidePreview } = useArtifactPreview();
 
   const PHASE_CONFIG = {
     'construir': { name: 'Construir', description: 'Construye un producto mínimo viable para probar tu hipótesis de manera rápida y económica.', color: 'primary', icon: <BoxSeam size={20} /> },
@@ -306,12 +301,7 @@ ${selectedArtifact.content}
 
   const renderArtifactCard = (artifact) => (
     <Col key={artifact.id}>
-      <Card 
-        className="h-100 shadow-sm border-0 artifact-card artifact-item"
-        onMouseEnter={(e) => showPreview(artifact, e)}
-        onMouseLeave={hidePreview}
-        style={{ cursor: 'pointer' }}
-      >
+      <Card className="h-100 shadow-sm border-0 artifact-card">
         <Card.Body>
           <div className="d-flex justify-content-between align-items-start mb-3">
             <Badge bg={currentPhaseConfig.color} className="px-3 py-2">
@@ -329,11 +319,7 @@ ${selectedArtifact.content}
         </Card.Body>
         <Card.Footer className="bg-white border-top-0 pt-0">
           <div className="d-grid">
-            <Button 
-              variant="outline-primary" 
-              className="d-flex justify-content-center align-items-center" 
-              onClick={() => handleShowArtifact(artifact)}
-            >
+            <Button variant="outline-primary" className="d-flex justify-content-center align-items-center" onClick={() => handleShowArtifact(artifact)}>
               <Eye className="me-2" size={16} />
               Ver Detalles
             </Button>
@@ -476,13 +462,6 @@ ${selectedArtifact.content}
       {renderError()}
       {artifacts.length === 0 ? renderEmptyState() : renderArtifactsGrid()}
       {renderDetailsModal()}
-      
-      {/* Vista previa de artefactos */}
-      <ArtifactPreviewCard
-        artifact={previewData}
-        position={position}
-        isVisible={isVisible}
-      />
     </div>
   );
 };

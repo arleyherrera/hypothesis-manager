@@ -15,6 +15,7 @@ const Navigation = () => {
     BRAND_NAME: 'Lean Startup Assistant',
     ROUTES: {
       HOME: '/',
+      DASHBOARD: '/dashboard',
       LOGIN: '/login',
       REGISTER: '/register'
     }
@@ -39,8 +40,8 @@ const Navigation = () => {
       <Nav className="me-auto">
         <Nav.Link 
           as={Link} 
-          to={NAV_CONFIG.ROUTES.HOME} 
-          active={isActiveRoute(NAV_CONFIG.ROUTES.HOME)}
+          to={NAV_CONFIG.ROUTES.DASHBOARD} 
+          active={isActiveRoute(NAV_CONFIG.ROUTES.DASHBOARD)}
           className="d-flex align-items-center"
         >
           <FileText className="me-2" size={18} />
