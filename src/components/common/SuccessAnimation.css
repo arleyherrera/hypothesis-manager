@@ -1,0 +1,498 @@
+/* src/components/common/SuccessAnimation.css */
+
+/* ===== SUCCESS ANIMATION OVERLAY ===== */
+.success-animation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+[data-theme="dark"] .success-animation-overlay {
+  background: rgba(13, 17, 23, 0.95);
+}
+
+.success-animation-overlay.exiting {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ===== SUCCESS CONTENT ===== */
+.success-animation-content {
+  text-align: center;
+  animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ===== SUCCESS ICON ===== */
+.success-icon-container {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+}
+
+/* Checkmark animation */
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+}
+
+.checkmark-circle {
+  stroke: #4caf50;
+  stroke-width: 2;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: strokeCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+@keyframes strokeCircle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.checkmark-check {
+  stroke: #4caf50;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: strokeCheck 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+@keyframes strokeCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Other icon animations */
+.success-icon-svg {
+  width: 80px;
+  height: 80px;
+}
+
+.icon-circle {
+  animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.icon-path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawPath 0.5s ease-out 0.3s forwards;
+}
+
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ===== SUCCESS MESSAGE ===== */
+.success-message {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  margin-bottom: 0.5rem;
+  animation: slideUp 0.5s ease-out 0.3s both;
+}
+
+.success-sub-message {
+  font-size: 1rem;
+  color: var(--bs-secondary-color);
+  animation: slideUp 0.5s ease-out 0.4s both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== CONFETTI ===== */
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--confetti-color, #ffc107);
+  top: -20px;
+  left: var(--confetti-left, 50%);
+  opacity: 0;
+  animation: confettiFall var(--confetti-duration, 3s) ease-out var(--confetti-delay, 0s) forwards;
+  transform: rotate(var(--confetti-rotation, 0deg));
+}
+
+.confetti-piece:nth-child(odd) {
+  border-radius: 50%;
+}
+
+.confetti-piece:nth-child(3n) {
+  width: 6px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.confetti-piece:nth-child(5n) {
+  width: 8px;
+  height: 8px;
+}
+
+@keyframes confettiFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(720deg) scale(0.5);
+  }
+}
+
+/* ===== TOAST NOTIFICATIONS ===== */
+.toast-notification {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: toastSlideIn 0.3s ease-out;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+[data-theme="dark"] .toast-notification {
+  background: #1e1e1e;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Toast positions */
+.toast-top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.toast-top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.toast-bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.toast-bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.toast-top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toast-bottom-center {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Toast animations by position */
+.toast-top-right,
+.toast-bottom-right {
+  animation: toastSlideInRight 0.3s ease-out;
+}
+
+.toast-top-left,
+.toast-bottom-left {
+  animation: toastSlideInLeft 0.3s ease-out;
+}
+
+.toast-top-center {
+  animation: toastSlideInTop 0.3s ease-out;
+}
+
+.toast-bottom-center {
+  animation: toastSlideInBottom 0.3s ease-out;
+}
+
+@keyframes toastSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideInTop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toastSlideInBottom {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Toast exit animation */
+.toast-exiting {
+  animation: toastSlideOut 0.3s ease-out forwards;
+}
+
+@keyframes toastSlideOut {
+  to {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+}
+
+/* Toast types */
+.toast-success {
+  border-left: 4px solid #4caf50;
+}
+
+.toast-error {
+  border-left: 4px solid #f44336;
+}
+
+.toast-warning {
+  border-left: 4px solid #ff9800;
+}
+
+.toast-info {
+  border-left: 4px solid #2196f3;
+}
+
+/* Toast icon */
+.toast-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.toast-icon-success {
+  background: #e8f5e9;
+  color: #4caf50;
+}
+
+.toast-icon-error {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.toast-icon-warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.toast-icon-info {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+[data-theme="dark"] .toast-icon-success {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+[data-theme="dark"] .toast-icon-error {
+  background: rgba(244, 67, 54, 0.2);
+}
+
+[data-theme="dark"] .toast-icon-warning {
+  background: rgba(255, 152, 0, 0.2);
+}
+
+[data-theme="dark"] .toast-icon-info {
+  background: rgba(33, 150, 243, 0.2);
+}
+
+/* Toast message */
+.toast-message {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+}
+
+/* Toast close button */
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.toast-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .toast-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 576px) {
+  .success-icon-container {
+    width: 60px;
+    height: 60px;
+  }
+
+  .success-checkmark,
+  .success-icon-svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .success-message {
+    font-size: 1.4rem;
+  }
+
+  .toast-notification {
+    left: 10px !important;
+    right: 10px !important;
+    min-width: auto;
+    max-width: none;
+    transform: none !important;
+  }
+
+  .toast-top-center,
+  .toast-bottom-center {
+    transform: none !important;
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  .success-animation-overlay,
+  .success-animation-content,
+  .checkmark-circle,
+  .checkmark-check,
+  .icon-circle,
+  .icon-path,
+  .success-message,
+  .success-sub-message,
+  .confetti-piece,
+  .toast-notification,
+  .toast-exiting {
+    animation: none;
+  }
+
+  .checkmark-circle,
+  .checkmark-check,
+  .icon-path {
+    stroke-dashoffset: 0;
+  }
+
+  .confetti-piece {
+    display: none;
+  }
+}

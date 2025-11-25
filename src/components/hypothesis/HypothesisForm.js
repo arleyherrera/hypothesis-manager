@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Form, Button, Card, Alert, Row, Col, ProgressBar, Modal, Spinner, Badge } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-  PencilSquare, 
-  ExclamationTriangle, 
-  CheckCircle, 
-  ArrowLeft, 
-  SendCheck, 
-  PatchQuestion, 
-  LightbulbFill, 
-  PeopleFill, 
+import {
+  PencilSquare,
+  ExclamationTriangle,
+  CheckCircle,
+  ArrowLeft,
+  SendCheck,
+  PatchQuestion,
+  LightbulbFill,
+  PeopleFill,
   Trophy,
   Robot,
   Magic,
@@ -17,6 +17,7 @@ import {
 } from 'react-bootstrap-icons';
 import { saveHypothesis } from '../../services/hypothesisService';
 import { generateHypothesisOptions } from '../../services/aiService';
+import { useSuccessAnimation } from '../common/SuccessAnimation';
 
 const HypothesisForm = () => {
   const navigate = useNavigate();
@@ -30,9 +31,12 @@ const HypothesisForm = () => {
   const [validated, setValidated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  
-  // Estados para la generación con IA
+  const [touched, setTouched] = useState({});
+
+  // Animacion de exito
+  const { showSuccess, SuccessComponent } = useSuccessAnimation();
+
+  // Estados para la generacion con IA
   const [showAIModal, setShowAIModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiOptions, setAiOptions] = useState([]);
@@ -78,17 +82,54 @@ const HypothesisForm = () => {
   const TOTAL_FIELDS = 5;
   const SUCCESS_REDIRECT_DELAY = 1500;
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Si cambia el problema y ya se generó con IA, resetear
+
+    // Si cambia el problema y ya se genero con IA, resetear
     if (name === 'problem' && aiGenerated) {
       setAiGenerated(false);
       setAiOptions([]);
       setSelectedOption(null);
     }
-  };
+  }, [aiGenerated]);
+
+  // Marcar campo como tocado cuando pierde el foco
+  const handleBlur = useCallback((e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+  }, []);
+
+  // Validacion en tiempo real por campo
+  const getFieldError = useCallback((fieldName) => {
+    if (!touched[fieldName]) return null;
+
+    const value = formData[fieldName];
+    if (!value || value.trim() === '') {
+      return 'Este campo es obligatorio';
+    }
+
+    if (fieldName === 'problem') {
+      if (value.trim().length < 20) {
+        return 'El problema debe tener al menos 20 caracteres';
+      }
+      if (value.split(/\s+/).length < 5) {
+        return 'Por favor, describa con mas detalle (minimo 5 palabras)';
+      }
+    }
+
+    if (fieldName === 'name' && value.trim().length < 5) {
+      return 'El nombre debe tener al menos 5 caracteres';
+    }
+
+    return null;
+  }, [touched, formData]);
+
+  // Verificar si un campo es valido
+  const isFieldValid = useCallback((fieldName) => {
+    if (!touched[fieldName]) return null;
+    return !getFieldError(fieldName);
+  }, [touched, getFieldError]);
 
   const isFormComplete = () => Object.values(formData).every(value => value);
 
@@ -166,13 +207,21 @@ const HypothesisForm = () => {
 
     setLoading(true);
     setError(null);
-    
+
     try {
       await saveHypothesis(formData);
-      setSuccess(true);
-      setTimeout(() => navigate('/'), SUCCESS_REDIRECT_DELAY);
+      // Mostrar animacion de exito
+      showSuccess({
+        message: 'Hipotesis creada exitosamente',
+        subMessage: 'Redirigiendo al dashboard...',
+        type: 'created',
+        duration: 2000,
+        onComplete: () => {
+          navigate('/', { state: { message: 'Hipotesis creada exitosamente' } });
+        }
+      });
     } catch (err) {
-      setError('Error al guardar la hipótesis. Por favor, inténtelo de nuevo.');
+      setError('Error al guardar la hipotesis. Por favor, intentelo de nuevo.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -180,18 +229,18 @@ const HypothesisForm = () => {
   };
 
   const renderHeader = () => (
-    <div className="d-flex justify-content-between align-items-center mb-4">
-      <h2 className="mb-0 d-flex align-items-center">
-        <PencilSquare className="me-2 text-primary" size={28} />
-        Nueva Hipótesis
-      </h2>
-      <Link to="/">
-        <Button variant="outline-secondary" className="d-flex align-items-center">
-          <ArrowLeft className="me-2" size={16} />
+    <header className="d-flex justify-content-between align-items-center mb-4">
+      <h1 className="mb-0 h2 d-flex align-items-center">
+        <PencilSquare className="me-2 text-primary" size={28} aria-hidden="true" />
+        Nueva Hipotesis
+      </h1>
+      <Link to="/" aria-label="Volver al listado de hipotesis">
+        <Button variant="outline-secondary" className="d-flex align-items-center btn-hover-scale">
+          <ArrowLeft className="me-2" size={16} aria-hidden="true" />
           Volver
         </Button>
       </Link>
-    </div>
+    </header>
   );
 
   const renderCardHeader = () => (
@@ -230,91 +279,122 @@ const HypothesisForm = () => {
     </Alert>
   );
 
-  const renderSuccessAlert = () => renderAlert('success', <CheckCircle className="me-3" size={24} />, '¡Excelente!', 'Hipótesis guardada correctamente. Redirigiendo...');
   const renderErrorAlert = () => renderAlert('danger', <ExclamationTriangle className="me-3" size={24} />, 'Ha ocurrido un error', error);
 
-  const renderProblemField = () => (
-    <Row className="mb-4">
-      <Col md={12}>
-        <Card className="h-100 shadow-sm border-0 border-primary border-2">
-          <Card.Body>
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <div className="d-flex align-items-center">
-                <div className="bg-primary rounded-circle p-2 me-3 text-white">
-                  <PatchQuestion size={24} />
+  const renderProblemField = () => {
+    const fieldError = getFieldError('problem');
+    const fieldValid = isFieldValid('problem');
+
+    return (
+      <Row className="mb-4">
+        <Col md={12}>
+          <Card className={`h-100 shadow-sm border-0 border-2 ${fieldError ? 'border-danger' : fieldValid ? 'border-success' : 'border-primary'}`}>
+            <Card.Body>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <div className="d-flex align-items-center">
+                  <div className={`rounded-circle p-2 me-3 text-white ${fieldError ? 'bg-danger' : fieldValid ? 'bg-success' : 'bg-primary'}`}>
+                    <PatchQuestion size={24} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <Form.Label htmlFor="problem-field" className="mb-0 fw-bold">
+                      Problema <span className="text-danger">*</span>
+                    </Form.Label>
+                    <small className="text-primary d-block">Este es el punto de partida mas importante</small>
+                  </div>
                 </div>
-                <div>
-                  <Form.Label className="mb-0 fw-bold">Problema</Form.Label>
-                  <small className="text-primary d-block">Este es el punto de partida más importante</small>
-                </div>
+                {/* Boton de generar con IA */}
+                <Button
+                  variant="success"
+                  onClick={handleGenerateWithAI}
+                  disabled={!formData.problem || formData.problem.length < 20 || generatingAI}
+                  className="d-flex align-items-center btn-hover-scale"
+                  aria-label="Generar campos con inteligencia artificial"
+                >
+                  <Magic className="me-2" size={16} aria-hidden="true" />
+                  Generar con IA
+                </Button>
               </div>
-              {/* Botón de generar con IA */}
-              <Button
-                variant="success"
-                onClick={handleGenerateWithAI}
-                disabled={!formData.problem || formData.problem.length < 20 || generatingAI}
-                className="d-flex align-items-center"
-              >
-                <Magic className="me-2" size={16} />
-                Generar con IA
-              </Button>
-            </div>
-            <Form.Control
-              as="textarea"
-              rows={5}
-              name="problem"
-              value={formData.problem}
-              onChange={handleChange}
-              placeholder="Describa detalladamente el problema que está observando. Sea específico: ¿Quién lo experimenta? ¿Cuándo ocurre? ¿Qué consecuencias tiene?"
-              required
-              className="form-control-lg"
-            />
-            <div className="d-flex justify-content-between align-items-center mt-2">
-              <Form.Text className="text-muted">
-                Un problema bien definido es la base de una hipótesis exitosa. Mínimo 20 caracteres.
-              </Form.Text>
-              {formData.problem.length >= 20 && (
-                <small className="text-success">
-                  <Check2Circle className="me-1" size={14} />
-                  Puede generar el resto con IA
-                </small>
+              <Form.Control
+                id="problem-field"
+                as="textarea"
+                rows={5}
+                name="problem"
+                value={formData.problem}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Describa detalladamente el problema que esta observando. Sea especifico: Quien lo experimenta? Cuando ocurre? Que consecuencias tiene?"
+                required
+                className={`form-control-lg ${fieldError ? 'is-invalid' : fieldValid ? 'is-valid' : ''}`}
+                aria-describedby="problem-help problem-error"
+                aria-invalid={!!fieldError}
+              />
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                  <Form.Text id="problem-help" className="text-muted">
+                    Un problema bien definido es la base de una hipotesis exitosa.
+                  </Form.Text>
+                  <div className="mt-1">
+                    <small className={formData.problem.length >= 20 ? 'text-success' : 'text-muted'}>
+                      {formData.problem.length}/20 caracteres minimos
+                    </small>
+                  </div>
+                </div>
+                {formData.problem.length >= 20 && !fieldError && (
+                  <small className="text-success d-flex align-items-center">
+                    <Check2Circle className="me-1" size={14} aria-hidden="true" />
+                    Puede generar el resto con IA
+                  </small>
+                )}
+              </div>
+              {fieldError && (
+                <div id="problem-error" className="invalid-feedback d-block">
+                  {fieldError}
+                </div>
               )}
-            </div>
-            <Form.Control.Feedback type="invalid">
-              El problema debe tener al menos 20 caracteres para ser suficientemente específico.
-            </Form.Control.Feedback>
-          </Card.Body>
-        </Card>
-      </Col>
-    </Row>
-  );
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    );
+  };
 
   const renderFieldCard = (fieldName, rows) => {
     const field = FORM_FIELDS[fieldName];
+    const fieldError = getFieldError(fieldName);
+    const fieldValid = isFieldValid(fieldName);
+    const fieldId = `${fieldName}-field`;
+
     return (
-      <Card className={`h-100 shadow-sm border-0 ${aiGenerated ? 'border-success' : ''}`}>
+      <Card className={`h-100 shadow-sm border-0 ${fieldError ? 'border-danger border-2' : fieldValid ? 'border-success border-2' : aiGenerated ? 'border-success' : ''}`}>
         <Card.Body>
           <div className="d-flex align-items-center mb-3">
-            <div className={`bg-${field.color} rounded-circle p-2 me-3 text-white`}>{field.icon}</div>
-            <Form.Label className="mb-0 fw-bold">{field.label}</Form.Label>
+            <div className={`rounded-circle p-2 me-3 text-white ${fieldError ? 'bg-danger' : fieldValid ? 'bg-success' : `bg-${field.color}`}`}>
+              {React.cloneElement(field.icon, { 'aria-hidden': 'true' })}
+            </div>
+            <Form.Label htmlFor={fieldId} className="mb-0 fw-bold">
+              {field.label} <span className="text-danger">*</span>
+            </Form.Label>
           </div>
           <Form.Control
+            id={fieldId}
             as="textarea"
             rows={rows}
             name={fieldName}
             value={formData[fieldName]}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder={field.placeholder}
             required
-            className={fieldName === 'problem' ? 'form-control-lg' : ''}
+            className={fieldError ? 'is-invalid' : fieldValid ? 'is-valid' : ''}
+            aria-describedby={`${fieldName}-help`}
+            aria-invalid={!!fieldError}
           />
-          <Form.Text className="text-muted d-block mt-2">{field.helpText}</Form.Text>
-          <Form.Control.Feedback type="invalid">
-            {fieldName === 'problem' ? 'El problema debe tener al menos 20 caracteres y 5 palabras' : 
-             fieldName === 'solution' ? 'Por favor describa su solución propuesta' : 
-             fieldName === 'customerSegment' ? 'Por favor identifique su segmento de clientes' : 
-             'Por favor defina su propuesta de valor'}
-          </Form.Control.Feedback>
+          <Form.Text id={`${fieldName}-help`} className="text-muted d-block mt-2">
+            {field.helpText}
+          </Form.Text>
+          {fieldError && (
+            <div className="invalid-feedback d-block">{fieldError}</div>
+          )}
         </Card.Body>
       </Card>
     );
@@ -334,26 +414,32 @@ const HypothesisForm = () => {
         </Alert>
       )}
       
-      {/* Nombre de la hipótesis */}
+      {/* Nombre de la hipotesis */}
       <Row className="mb-4">
         <Col md={12}>
           <Form.Group>
-            <Form.Label><strong>Nombre de la Hipótesis</strong></Form.Label>
+            <Form.Label htmlFor="name-field">
+              <strong>Nombre de la Hipotesis</strong> <span className="text-danger">*</span>
+            </Form.Label>
             <Form.Control
+              id="name-field"
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Un nombre corto y descriptivo para identificar esta hipótesis"
+              onBlur={handleBlur}
+              placeholder="Un nombre corto y descriptivo para identificar esta hipotesis"
               required
-              className={aiGenerated ? 'border-success' : ''}
+              className={getFieldError('name') ? 'is-invalid' : isFieldValid('name') ? 'is-valid' : aiGenerated ? 'border-success' : ''}
+              aria-describedby="name-help"
+              aria-invalid={!!getFieldError('name')}
             />
-            <Form.Text className="text-muted">
-              Un título que resuma el problema y la solución propuesta
+            <Form.Text id="name-help" className="text-muted">
+              Un titulo que resuma el problema y la solucion propuesta
             </Form.Text>
-            <Form.Control.Feedback type="invalid">
-              Por favor ingrese un nombre para su hipótesis.
-            </Form.Control.Feedback>
+            {getFieldError('name') && (
+              <div className="invalid-feedback d-block">{getFieldError('name')}</div>
+            )}
           </Form.Group>
         </Col>
       </Row>
@@ -499,18 +585,18 @@ const HypothesisForm = () => {
   );
 
   return (
-    <div className="fade-in">
+    <main id="main-content" className="fade-in">
       {renderHeader()}
       <Card className="mb-4 shadow-sm">
         {renderCardHeader()}
         <Card.Body className="p-4">
-          {success && renderSuccessAlert()}
           {error && renderErrorAlert()}
           {renderForm()}
         </Card.Body>
       </Card>
       {renderAIModal()}
-    </div>
+      <SuccessComponent />
+    </main>
   );
 };
 

@@ -1,8 +1,8 @@
 // src/components/Navigation.js
-import React, { useState, useEffect } from 'react';
-import { Navbar, Nav, Container, NavDropdown, Button, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navbar, Nav, Container, NavDropdown, Button } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Lightbulb, FileText, BoxArrowRight, Person, PersonGear, PlusCircleFill, PersonPlus } from 'react-bootstrap-icons';
+import { Lightbulb, FileText, BoxArrowRight, PersonGear, PlusCircleFill, PersonPlus } from 'react-bootstrap-icons';
 import { getCurrentUser, logout } from '../../services/authService';
 import ThemeToggle from './ThemeToggle';
 
@@ -11,6 +11,7 @@ const Navigation = () => {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
   const [scrolled, setScrolled] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const NAV_CONFIG = {
     BRAND_NAME: 'Lean Startup Assistant',
@@ -36,10 +37,31 @@ const Navigation = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = () => {
+  // Cerrar navbar al cambiar de ruta
+  useEffect(() => {
+    setExpanded(false);
+  }, [location.pathname]);
+
+  // Cerrar navbar al presionar Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && expanded) {
+        setExpanded(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [expanded]);
+
+  const handleLogout = useCallback(() => {
     logout();
     navigate(NAV_CONFIG.ROUTES.HOME);
-  };
+  }, [navigate]);
+
+  const handleNavSelect = useCallback(() => {
+    setExpanded(false);
+  }, []);
 
   const isActiveRoute = (path) => location.pathname === path;
 
@@ -52,14 +74,19 @@ const Navigation = () => {
   };
 
   const renderBrand = () => (
-    <Navbar.Brand as={Link} to={currentUser ? NAV_CONFIG.ROUTES.DASHBOARD : NAV_CONFIG.ROUTES.HOME} className="d-flex align-items-center">
-      <Lightbulb className="me-2" size={24} />
+    <Navbar.Brand
+      as={Link}
+      to={currentUser ? NAV_CONFIG.ROUTES.DASHBOARD : NAV_CONFIG.ROUTES.HOME}
+      className="d-flex align-items-center"
+      aria-label={`${NAV_CONFIG.BRAND_NAME} - Ir al inicio`}
+    >
+      <Lightbulb className="me-2" size={24} aria-hidden="true" />
       <span className="d-none d-md-inline">{NAV_CONFIG.BRAND_NAME}</span>
       <span className="d-inline d-md-none fw-bold">{NAV_CONFIG.BRAND_SHORT}</span>
     </Navbar.Brand>
   );
 
-  // Componente Avatar con iniciales
+  // Componente Avatar con iniciales - accesible
   const UserAvatar = ({ name, size = 32 }) => {
     const initials = getUserInitials(name);
     return (
@@ -71,6 +98,8 @@ const Navigation = () => {
           fontSize: `${size * 0.4}px`,
           border: '2px solid rgba(255, 255, 255, 0.3)'
         }}
+        role="img"
+        aria-label={`Avatar de ${name}`}
       >
         {initials}
       </div>
@@ -85,22 +114,23 @@ const Navigation = () => {
           to={NAV_CONFIG.ROUTES.DASHBOARD}
           active={isActiveRoute(NAV_CONFIG.ROUTES.DASHBOARD)}
           className={`nav-link-custom d-flex align-items-center position-relative ${isActiveRoute(NAV_CONFIG.ROUTES.DASHBOARD) ? 'active' : ''}`}
+          onClick={handleNavSelect}
         >
           <FileText className="me-2" size={18} />
-          Mis Hipótesis
+          Mis Hipotesis
         </Nav.Link>
       </Nav>
       <Nav className="d-flex align-items-center gap-2">
-        {/* Botón CTA - Nueva Hipótesis */}
         <Button
           as={Link}
           to={NAV_CONFIG.ROUTES.CREATE}
           variant="light"
           size="sm"
           className="d-flex align-items-center fw-semibold me-2"
+          onClick={handleNavSelect}
         >
           <PlusCircleFill className="me-1" size={16} />
-          <span className="d-none d-lg-inline">Nueva Hipótesis</span>
+          <span className="d-none d-lg-inline">Nueva Hipotesis</span>
           <span className="d-inline d-lg-none">Nueva</span>
         </Button>
 
@@ -117,14 +147,14 @@ const Navigation = () => {
           align="end"
           className="user-dropdown"
         >
-          <NavDropdown.Item as={Link} to={NAV_CONFIG.ROUTES.PROFILE}>
+          <NavDropdown.Item as={Link} to={NAV_CONFIG.ROUTES.PROFILE} onClick={handleNavSelect}>
             <PersonGear className="me-2" size={18} />
             Mi Perfil
           </NavDropdown.Item>
           <NavDropdown.Divider />
           <NavDropdown.Item onClick={handleLogout}>
             <BoxArrowRight className="me-2" size={18} />
-            Cerrar Sesión
+            Cerrar Sesion
           </NavDropdown.Item>
         </NavDropdown>
       </Nav>
@@ -134,17 +164,17 @@ const Navigation = () => {
   const renderUnauthenticatedNav = () => (
     <>
       <Nav className="ms-auto d-flex align-items-center gap-2">
-        <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.LOGIN} className="text-white">
-          Iniciar Sesión
+        <Nav.Link as={Link} to={NAV_CONFIG.ROUTES.LOGIN} className="text-white" onClick={handleNavSelect}>
+          Iniciar Sesion
         </Nav.Link>
 
-        {/* Botón CTA - Comenzar Gratis */}
         <Button
           as={Link}
           to={NAV_CONFIG.ROUTES.REGISTER}
           variant="light"
           size="sm"
           className="d-flex align-items-center fw-semibold"
+          onClick={handleNavSelect}
         >
           <PersonPlus className="me-1" size={16} />
           <span className="d-none d-sm-inline">Comenzar Gratis</span>
@@ -164,6 +194,8 @@ const Navigation = () => {
       variant="dark"
       expand="lg"
       fixed="top"
+      expanded={expanded}
+      onToggle={setExpanded}
       className={`navbar-custom ${scrolled ? 'navbar-scrolled' : ''}`}
     >
       <Container>
