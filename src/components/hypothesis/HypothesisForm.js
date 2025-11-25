@@ -217,7 +217,7 @@ const HypothesisForm = () => {
         type: 'created',
         duration: 2000,
         onComplete: () => {
-          navigate('/', { state: { message: 'Hipotesis creada exitosamente' } });
+          navigate('/dashboard', { state: { message: 'Hipotesis creada exitosamente' } });
         }
       });
     } catch (err) {
@@ -234,7 +234,7 @@ const HypothesisForm = () => {
         <PencilSquare className="me-2 text-primary" size={28} aria-hidden="true" />
         Nueva Hipotesis
       </h1>
-      <Link to="/" aria-label="Volver al listado de hipotesis">
+      <Link to="/dashboard" aria-label="Volver al listado de hipotesis">
         <Button variant="outline-secondary" className="d-flex align-items-center btn-hover-scale">
           <ArrowLeft className="me-2" size={16} aria-hidden="true" />
           Volver

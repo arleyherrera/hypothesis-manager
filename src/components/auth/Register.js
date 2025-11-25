@@ -1,6 +1,6 @@
 // src/components/Register.js
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Card, Alert, Row, Col, Container, InputGroup, ProgressBar } from 'react-bootstrap';
+import { Form, Button, Card, Alert, Row, Col, Container, InputGroup, ProgressBar, Modal } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   PersonPlus, 
@@ -39,6 +39,8 @@ const Register = () => {
   });
   const [validationErrors, setValidationErrors] = useState({});
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [hasReadConsent, setHasReadConsent] = useState(false);
   const navigate = useNavigate();
   const { register, error: authError, clearError } = useAuth();
 
@@ -619,21 +621,42 @@ const Register = () => {
                     </Form.Group>
 
                     <Form.Group className="mb-4">
-                      <Form.Check 
-                        type="checkbox" 
-                        id="termsAgree" 
-                        checked={acceptTerms}
-                        onChange={(e) => setAcceptTerms(e.target.checked)}
-                        label={
-                          <span className="text-muted small">
-                            He leído y acepto los <Link to="/terms" className="text-decoration-none">Términos y Condiciones</Link> y la <Link to="/privacy" className="text-decoration-none">Política de Privacidad</Link>
-                          </span>
-                        }
-                        required
-                      />
+                      <div className="d-flex align-items-start">
+                        <Form.Check
+                          type="checkbox"
+                          id="termsAgree"
+                          checked={acceptTerms}
+                          onChange={(e) => {
+                            if (e.target.checked && !hasReadConsent) {
+                              setShowConsentModal(true);
+                            } else {
+                              setAcceptTerms(e.target.checked);
+                            }
+                          }}
+                          className="me-2"
+                          required
+                        />
+                        <label htmlFor="termsAgree" className="text-muted small" style={{ cursor: 'pointer' }}>
+                          He leido y acepto el{' '}
+                          <Button
+                            variant="link"
+                            className="p-0 text-decoration-none align-baseline"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setShowConsentModal(true);
+                            }}
+                          >
+                            Consentimiento Informado
+                          </Button>
+                          , los{' '}
+                          <Link to="/terms" className="text-decoration-none">Terminos y Condiciones</Link>
+                          {' '}y la{' '}
+                          <Link to="/privacy" className="text-decoration-none">Politica de Privacidad</Link>
+                        </label>
+                      </div>
                       {touched.confirmPassword && !acceptTerms && (
-                        <Form.Text className="text-danger small">
-                          Debe aceptar los términos y condiciones
+                        <Form.Text className="text-danger small d-block mt-1">
+                          Debe leer y aceptar el consentimiento informado para continuar
                         </Form.Text>
                       )}
                     </Form.Group>
@@ -681,6 +704,138 @@ const Register = () => {
           </div>
         </Col>
       </Row>
+
+      {/* Modal de Consentimiento Informado */}
+      <Modal
+        show={showConsentModal}
+        onHide={() => setShowConsentModal(false)}
+        size="lg"
+        centered
+        scrollable
+      >
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title className="d-flex align-items-center">
+            <InfoCircleFill className="me-2" size={24} />
+            Consentimiento Informado
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '60vh' }}>
+          <div className="consent-content">
+            <h5 className="text-primary mb-3">Informacion sobre el Tratamiento de Datos Personales</h5>
+
+            <p className="text-muted small mb-4">
+              Antes de crear su cuenta, es importante que lea y comprenda como utilizaremos sus datos personales.
+            </p>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">1. Responsable del Tratamiento</h6>
+              <p className="small">
+                Lean Startup Assistant es responsable del tratamiento de los datos personales que usted proporcione
+                al registrarse en nuestra plataforma.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">2. Datos que Recopilamos</h6>
+              <ul className="small">
+                <li><strong>Datos de identificacion:</strong> Nombre completo y correo electronico.</li>
+                <li><strong>Datos de acceso:</strong> Contrasena (almacenada de forma encriptada).</li>
+                <li><strong>Datos de uso:</strong> Hipotesis creadas, artefactos generados y actividad en la plataforma.</li>
+                <li><strong>Datos tecnicos:</strong> Direccion IP, tipo de navegador y dispositivo utilizado.</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">3. Finalidad del Tratamiento</h6>
+              <p className="small">Sus datos seran utilizados para:</p>
+              <ul className="small">
+                <li>Gestionar su cuenta y proporcionar acceso a la plataforma.</li>
+                <li>Permitir la creacion y gestion de hipotesis de negocio.</li>
+                <li>Generar artefactos Lean Startup mediante inteligencia artificial.</li>
+                <li>Mejorar nuestros servicios y experiencia de usuario.</li>
+                <li>Enviar comunicaciones relacionadas con el servicio (si lo autoriza).</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">4. Base Legal</h6>
+              <p className="small">
+                El tratamiento de sus datos se basa en su consentimiento expreso al aceptar este documento,
+                asi como en la ejecucion del contrato de servicio al utilizar nuestra plataforma.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">5. Derechos del Usuario</h6>
+              <p className="small">Usted tiene derecho a:</p>
+              <ul className="small">
+                <li><strong>Acceso:</strong> Conocer que datos personales tenemos sobre usted.</li>
+                <li><strong>Rectificacion:</strong> Corregir datos inexactos o incompletos.</li>
+                <li><strong>Supresion:</strong> Solicitar la eliminacion de sus datos.</li>
+                <li><strong>Portabilidad:</strong> Recibir sus datos en formato estructurado.</li>
+                <li><strong>Oposicion:</strong> Oponerse al tratamiento de sus datos.</li>
+                <li><strong>Limitacion:</strong> Solicitar la limitacion del tratamiento.</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">6. Conservacion de Datos</h6>
+              <p className="small">
+                Sus datos seran conservados mientras mantenga una cuenta activa en la plataforma.
+                Una vez solicite la eliminacion de su cuenta, sus datos seran eliminados en un plazo
+                maximo de 30 dias, salvo obligacion legal de conservacion.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">7. Seguridad</h6>
+              <p className="small">
+                Implementamos medidas de seguridad tecnicas y organizativas para proteger sus datos
+                personales contra acceso no autorizado, perdida o alteracion. Las contrasenas se
+                almacenan utilizando algoritmos de encriptacion seguros.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <h6 className="fw-bold">8. Uso de Inteligencia Artificial</h6>
+              <p className="small">
+                Nuestra plataforma utiliza servicios de inteligencia artificial para generar artefactos
+                Lean Startup. Los datos de sus hipotesis pueden ser procesados por estos servicios
+                unicamente para generar el contenido solicitado, sin almacenamiento permanente por
+                parte de terceros.
+              </p>
+            </div>
+
+            <div className="p-3 bg-light rounded">
+              <p className="small mb-0">
+                <strong>Declaracion de Consentimiento:</strong> Al hacer clic en "Acepto y Continuar",
+                declaro que he leido y comprendido esta informacion, y otorgo mi consentimiento libre,
+                especifico, informado e inequivoco para el tratamiento de mis datos personales conforme
+                a lo descrito anteriormente.
+              </p>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="justify-content-between">
+          <Button
+            variant="outline-secondary"
+            onClick={() => setShowConsentModal(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setHasReadConsent(true);
+              setAcceptTerms(true);
+              setShowConsentModal(false);
+            }}
+          >
+            <Check2Circle className="me-2" size={18} />
+            Acepto y Continuar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };
